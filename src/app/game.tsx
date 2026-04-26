@@ -15,6 +15,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { CustomModal } from '../components/CustomModal';
 import { Footer } from '../components/Footer';
 import { Header } from '../components/Header';
+import { Inventory } from '../components/Inventory';
 import { LanguageModal } from '../components/LanguageModal';
 import { SpecialCardModal } from '../components/SpecialCardModal';
 import { COLORS } from '../constants/theme';
@@ -44,8 +45,11 @@ export default function GameScreen() {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const {
     specialCard, word, theme, isWordVisible,
-    timerValue, isTimerRunning, roundStarted, isStealing
+    timerValue, isTimerRunning, roundStarted, isStealing,
+    inventoryA = [], inventoryB = [], activeCard, onboardingShown
   } = currentRoundState;
+
+  const { addToInventory, removeFromInventory } = useAppStore();
 
   // Local UI states (modals that don't need persistence as much)
   const [showExitModal, setShowExitModal] = useState(false);
@@ -56,8 +60,11 @@ export default function GameScreen() {
   const [showStealSuccessModal, setShowStealSuccessModal] = useState(false);
   const [stealSuccessPoints, setStealSuccessPoints] = useState('0');
   const [showTimeUpModal, setShowTimeUpModal] = useState(false);
+  const [showFullInventoryModal, setShowFullInventoryModal] = useState(false);
+  const [pendingCard, setPendingCard] = useState<any>(null);
   const [isRolling, setIsRolling] = useState(false);
   const [diceResult, setDiceResult] = useState('?');
+  const [showTooltip, setShowTooltip] = useState(false);
 
   // Filter themes based on settings
   const availableThemes = specialCardsEnabled
@@ -65,7 +72,6 @@ export default function GameScreen() {
     : THEMES.filter(t => t.key !== 'S');
 
   // Filter special cards based on selection and dynamic data
-  // Fallback to DEFAULT_SPECIAL_CARDS if store data is empty
   const baseCardsData = specialCardsData;
   const availableSpecialCards = baseCardsData.filter(card => selectedCards[card.id as keyof typeof selectedCards]);
 
@@ -180,12 +186,13 @@ export default function GameScreen() {
         finalTheme = commonThemes[Math.floor(Math.random() * commonThemes.length)];
       } else {
         // Weighted logic: 18% each common (90% total), 10% Special
-        if (rand < 18) finalTheme = THEMES[0];      // Abstrato
-        else if (rand < 36) finalTheme = THEMES[1]; // Vivo
-        else if (rand < 54) finalTheme = THEMES[2]; // Consumo
-        else if (rand < 72) finalTheme = THEMES[3]; // Objeto
-        else if (rand < 90) finalTheme = THEMES[4]; // Lazer
-        else finalTheme = THEMES[5];                // Especial
+        // if (rand < 18) finalTheme = THEMES[0];      // Abstrato
+        // else if (rand < 36) finalTheme = THEMES[1]; // Vivo
+        // else if (rand < 54) finalTheme = THEMES[2]; // Consumo
+        // else if (rand < 72) finalTheme = THEMES[3]; // Objeto
+        // else if (rand < 90) finalTheme = THEMES[4]; // Lazer
+        // else finalTheme = THEMES[5];                // Especial
+        finalTheme = THEMES[5];                // Especial
       }
 
       setDiceResult(finalTheme.key);
@@ -213,8 +220,27 @@ export default function GameScreen() {
                 specialCardsUsed: [...matchStats.specialCardsUsed, randomSpecial.id]
               });
             }
-            setRoundState({ specialCard: randomSpecial });
-            setShowSpecialModal(true);
+            if (randomSpecial.usage === 'Instantâneo') {
+              setRoundState({ activeCard: randomSpecial, specialCard: randomSpecial });
+              setShowSpecialModal(true);
+            } else {
+              // Storable card
+              const currentInv = isTeamATurn ? inventoryA : inventoryB;
+              if (currentInv.length < 2) {
+                addToInventory(isTeamATurn ? 'A' : 'B', randomSpecial);
+                setRoundState({ specialCard: randomSpecial });
+                setShowSpecialModal(true);
+
+                if (!onboardingShown) {
+                  setShowTooltip(true);
+                  setRoundState({ onboardingShown: true });
+                  setTimeout(() => setShowTooltip(false), 2000);
+                }
+              } else {
+                setPendingCard(randomSpecial);
+                setShowFullInventoryModal(true);
+              }
+            }
             setDiceResult('?');
           }
         } else {
@@ -299,6 +325,7 @@ export default function GameScreen() {
     const wasNormalRound = !isStealing;
 
     if (wasNormalRound) {
+      handleTransferCards(isTeamATurn ? 'A' : 'B');
       rotateLeader(isTeamATurn);
 
       // Track theme miss for the team who cancelled
@@ -352,6 +379,7 @@ export default function GameScreen() {
       finishRound(true);
     } else {
       // Normal turn finished, rotate leader and pass turn
+      handleTransferCards(isTeamATurn ? 'A' : 'B');
       rotateLeader(isTeamATurn);
       finishRound(true);
     }
@@ -383,6 +411,12 @@ export default function GameScreen() {
         setCurrentRound(prev => prev + 1);
       }
 
+      // Check for Volatile cards and transfer if round lost
+      // If team lost (didn't score) and had volatile cards, pass to rival
+      // In finishRound, we can check if points were awarded.
+      // But finishRound is called in both success and fail.
+      // Let's handle transfer in confirmCancel and handleTimeUpClose instead.
+
       // Victory Check
       if (scoreA >= scoreToWin || scoreB >= scoreToWin) {
         updateMatchStats({
@@ -393,6 +427,33 @@ export default function GameScreen() {
         router.replace('/victory');
       }
     }
+  };
+
+  const handleTransferCards = (fromTeam: 'A' | 'B') => {
+    const fromInv = fromTeam === 'A' ? inventoryA : inventoryB;
+    const toTeam = fromTeam === 'A' ? 'B' : 'A';
+    const toInv = toTeam === 'A' ? inventoryA : inventoryB;
+
+    fromInv.forEach(card => {
+      if (card.volatile && toInv.length < 2) {
+        addToInventory(toTeam, card);
+        removeFromInventory(fromTeam, card.id);
+        // Alert or animation could be here
+      }
+    });
+  };
+
+  const handleCardUse = (card: any) => {
+    setRoundState({ activeCard: card });
+    removeFromInventory(isTeamATurn ? 'A' : 'B', card.id);
+    setShowSpecialModal(false);
+  };
+
+  const replaceCard = (oldCardId: string) => {
+    removeFromInventory(isTeamATurn ? 'A' : 'B', oldCardId);
+    addToInventory(isTeamATurn ? 'A' : 'B', pendingCard);
+    setShowFullInventoryModal(false);
+    setPendingCard(null);
   };
 
   const getLanguageFlag = () => {
@@ -409,11 +470,6 @@ export default function GameScreen() {
     setShowExitModal(false);
     resetRoundState();
     router.replace('/');
-  };
-
-  const renderCardIcon = (icon: string, type: string, size = 32, color = COLORS.primary) => {
-    if (type === 'FontAwesome5') return <FontAwesome5 name={icon as any} size={size} color={color} />;
-    return <MaterialCommunityIcons name={icon as any} size={size + 4} color={color} />;
   };
 
   const currentLeaderName = isTeamATurn
@@ -525,11 +581,17 @@ export default function GameScreen() {
               </View>
             )}
 
-            <View style={styles.actionGridColumn}>
+            {activeCard?.volatile && (
+              <View style={[styles.stealBadge, { backgroundColor: COLORS.danger, borderColor: COLORS.dark }]}>
+                <MaterialCommunityIcons name="alert-circle" size={16} color="#FFF" />
+                <Text style={styles.stealBadgeText}>RISCO: CARTA VOLÁTIL EM USO!</Text>
+              </View>
+            )}
 
+            <View style={styles.actionGridColumn}>
               <View style={styles.activeThemeBadge}>
                 <Text style={styles.activeThemeValue}>
-                  {specialCard ? 'ESPECIAL' : theme?.label.toUpperCase()}
+                  {activeCard ? `ESPECIAL: ${activeCard.title.toUpperCase()}` : theme?.label.toUpperCase()}
                 </Text>
               </View>
 
@@ -588,6 +650,29 @@ export default function GameScreen() {
             </Animated.View>
           </View>
         )}
+
+        {/* Inventory Section */}
+        <View style={styles.inventoryWrapper}>
+          {showTooltip && (
+            <View style={styles.tooltip}>
+              <MaterialCommunityIcons name="gift-outline" size={14} color="#FFF" />
+              <Text style={styles.tooltipText}>
+                Ganhaste uma Carta Especial! Pode guardá-la ou usá-la para virar o jogo.
+              </Text>
+            </View>
+          )}
+          <Inventory
+            team={isTeamATurn ? 'A' : 'B'}
+            cards={isTeamATurn ? inventoryA : inventoryB}
+            activeCard={activeCard}
+            isCurrentTurn={!isRolling && roundStarted}
+            hasVolatileCard={(isTeamATurn ? inventoryA : inventoryB).some(c => c.volatile)}
+            onCardPress={(card) => {
+              setRoundState({ specialCard: card });
+              setShowSpecialModal(true);
+            }}
+          />
+        </View>
 
         {/* Footer Controls (Fixed Bottom) */}
         {!showWordModal && !!word && (
@@ -693,9 +778,43 @@ export default function GameScreen() {
 
       <SpecialCardModal
         visible={showSpecialModal}
-        onClose={() => setShowSpecialModal(false)}
+        onClose={() => {
+          setShowSpecialModal(false);
+          if (!roundStarted) setRoundState({ specialCard: null });
+        }}
         specialCard={specialCard}
+        onConfirm={(!roundStarted && specialCard?.usage !== 'Instantâneo') ? () => handleCardUse(specialCard) : undefined}
+        confirmText="USAR NESTA RODADA"
       />
+
+      {/* Inventory Full Modal */}
+      <CustomModal
+        visible={showFullInventoryModal}
+        onClose={() => setShowFullInventoryModal(false)}
+        title="INVENTÁRIO CHEIO!"
+        description={`Escolha uma carta para substituir pela nova: ${pendingCard?.title}`}
+        buttonText="DESCARTAR NOVA"
+      >
+        <View style={styles.fullInvOptions}>
+          {(isTeamATurn ? (inventoryA || []) : (inventoryB || [])).map(card => (
+            <TouchableOpacity
+              key={card.id}
+              style={styles.replaceCardButton}
+              onPress={() => replaceCard(card.id)}
+            >
+              <MaterialCommunityIcons name={card.icon as any} size={24} color="#FFF" />
+              <Text style={styles.replaceCardText}>Substituir {card.title}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[styles.replaceCardButton, { backgroundColor: COLORS.dark }]}
+            onPress={() => handleCardUse(pendingCard)}
+          >
+            <MaterialCommunityIcons name="play-circle" size={24} color="#FFF" />
+            <Text style={styles.replaceCardText}>Usar Imediatamente</Text>
+          </TouchableOpacity>
+        </View>
+      </CustomModal>
 
       {/* Steal Word Confirmation Modal */}
       <CustomModal
@@ -1162,14 +1281,47 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
   },
-  modalExitButton: {
-    marginTop: 15,
+  inventoryWrapper: {
+    width: '100%',
   },
-  modalExitButton: {
-    marginTop: 15,
+  tooltip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.dark,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginHorizontal: 20,
+    marginBottom: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FFF',
   },
-  modalExitText: {
-    color: COLORS.dark,
-    textDecorationLine: 'underline',
+  tooltipText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+    flex: 1,
+    flexWrap: 'wrap',
+  },
+  fullInvOptions: {
+    width: '100%',
+    gap: 12,
+    marginTop: 10,
+  },
+  replaceCardButton: {
+    backgroundColor: COLORS.primaryLight,
+    flexDirection: 'row',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 10,
+    borderBottomWidth: 4,
+    borderColor: COLORS.primaryDark,
+  },
+  replaceCardText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

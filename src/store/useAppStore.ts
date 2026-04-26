@@ -16,10 +16,11 @@ export interface SpecialCard {
   status: string;
   points: number;
   progression: string;
-  usage: string;
+  usage: string; // 'Instantâneo' | 'Livre (Inventário)'
   rarity: number;
   icon: string;
   type: string;
+  volatile?: boolean; // Passa para o rival se perder
 }
 
 interface AppState {
@@ -71,6 +72,7 @@ interface AppState {
   };
   updateMatchStats: (stats: Partial<AppState['matchStats']>) => void;
   resetMatchStats: () => void;
+  resetMatch: () => void; // alias for resetMatchStats, also clears inventories
 
   // Game Loop State
   currentRoundState: {
@@ -82,9 +84,15 @@ interface AppState {
     isTimerRunning: boolean;
     roundStarted: boolean;
     isStealing: boolean;
+    inventoryA: SpecialCard[];
+    inventoryB: SpecialCard[];
+    activeCard: SpecialCard | null; // Card currently being used in the round
+    onboardingShown: boolean;
   };
   setRoundState: (state: Partial<AppState['currentRoundState']>) => void;
   resetRoundState: () => void;
+  addToInventory: (team: 'A' | 'B', card: SpecialCard) => void;
+  removeFromInventory: (team: 'A' | 'B', cardId: string) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -145,7 +153,7 @@ export const useAppStore = create<AppState>()(
           title: 'Coringa',
           desc: 'Escolhe o tema, ganha 2 dicas extras ou troca a carta.',
           progression: 'Flexibilidade total',
-          usage: 'Imediato',
+          usage: 'Livre (Inventário)',
           icon: 'cards-playing-outline',
           type: 'MaterialCommunityIcons',
         },
@@ -157,13 +165,14 @@ export const useAppStore = create<AppState>()(
           usage: 'Durante a rodada',
           icon: 'user-friends',
           type: 'FontAwesome5',
+          volatile: true,
         },
         {
           id: 'bomb',
           title: 'Autodestruição',
           desc: 'O time perde a rodada instantaneamente.',
           progression: 'Derrota imediata',
-          usage: 'Durante a rodada',
+          usage: 'Instantâneo',
           icon: 'bomb',
           type: 'MaterialCommunityIcons',
         },
@@ -181,9 +190,10 @@ export const useAppStore = create<AppState>()(
           title: 'Riqueza',
           desc: 'Acerto garante o valor máximo do cronômetro.',
           progression: 'Recompensa máxima',
-          usage: 'Fim da rodada',
+          usage: 'Livre (Inventário)',
           icon: 'coins',
           type: 'FontAwesome5',
+          volatile: true,
         },
         {
           id: 'dose',
@@ -229,6 +239,31 @@ export const useAppStore = create<AppState>()(
           specialCardsUsed: [],
         }
       }),
+      resetMatch: () => set((state) => ({
+        matchStats: {
+          startTime: null,
+          totalRounds: 0,
+          finalScoreA: 0,
+          finalScoreB: 0,
+          leaderPoints: {},
+          themeStats: {},
+          specialCardsUsed: [],
+        },
+        currentRoundState: {
+          ...state.currentRoundState,
+          specialCard: null,
+          word: null,
+          theme: null,
+          isWordVisible: false,
+          timerValue: state.timer || 30,
+          isTimerRunning: false,
+          roundStarted: false,
+          isStealing: false,
+          inventoryA: [],
+          inventoryB: [],
+          activeCard: null,
+        }
+      })),
 
       // Game Loop State
       currentRoundState: {
@@ -240,12 +275,17 @@ export const useAppStore = create<AppState>()(
         isTimerRunning: false,
         roundStarted: false,
         isStealing: false,
+        inventoryA: [],
+        inventoryB: [],
+        activeCard: null,
+        onboardingShown: false,
       },
       setRoundState: (newState) => set((state) => ({
         currentRoundState: { ...state.currentRoundState, ...newState }
       })),
       resetRoundState: () => set((state) => ({
         currentRoundState: {
+          ...state.currentRoundState,
           specialCard: null,
           word: null,
           theme: null,
@@ -254,12 +294,57 @@ export const useAppStore = create<AppState>()(
           isTimerRunning: false,
           roundStarted: false,
           isStealing: false,
+          activeCard: null,
         }
       })),
+      addToInventory: (team, card) => set((state) => {
+        const inventoryKey = team === 'A' ? 'inventoryA' : 'inventoryB';
+        const currentInv: SpecialCard[] = state.currentRoundState[inventoryKey] ?? [];
+        if (currentInv.length < 2) {
+          return {
+            currentRoundState: {
+              ...state.currentRoundState,
+              [inventoryKey]: [...currentInv, card]
+            }
+          };
+        }
+        return state; // Handle overflow in UI (replacement logic)
+      }),
+      removeFromInventory: (team, cardId) => set((state) => {
+        const inventoryKey = team === 'A' ? 'inventoryA' : 'inventoryB';
+        const currentInv: SpecialCard[] = state.currentRoundState[inventoryKey] ?? [];
+        return {
+          currentRoundState: {
+            ...state.currentRoundState,
+            [inventoryKey]: currentInv.filter(c => c.id !== cardId)
+          }
+        };
+      }),
     }),
     {
       name: 'mexeriqueiro-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      // Deep-merge persisted state so new fields get their defaults
+      merge: (persistedState: any, currentState: AppState): AppState => ({
+        ...currentState,
+        ...persistedState,
+        matchStats: {
+          ...currentState.matchStats,
+          ...(persistedState?.matchStats ?? {}),
+          // Ensure arrays are never undefined
+          specialCardsUsed: persistedState?.matchStats?.specialCardsUsed ?? [],
+          leaderPoints: persistedState?.matchStats?.leaderPoints ?? {},
+          themeStats: persistedState?.matchStats?.themeStats ?? {},
+        },
+        currentRoundState: {
+          ...currentState.currentRoundState,
+          ...(persistedState?.currentRoundState ?? {}),
+          inventoryA: persistedState?.currentRoundState?.inventoryA ?? [],
+          inventoryB: persistedState?.currentRoundState?.inventoryB ?? [],
+          activeCard: persistedState?.currentRoundState?.activeCard ?? null,
+          onboardingShown: persistedState?.currentRoundState?.onboardingShown ?? false,
+        },
+      }),
     }
   )
 );

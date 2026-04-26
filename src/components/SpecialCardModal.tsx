@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { CustomModal } from './CustomModal';
 import { COLORS } from '../constants/theme';
@@ -9,9 +9,11 @@ interface SpecialCardModalProps {
   visible: boolean;
   onClose: () => void;
   specialCard: SpecialCard | null;
+  onConfirm?: () => void;
+  confirmText?: string;
 }
 
-export function SpecialCardModal({ visible, onClose, specialCard }: SpecialCardModalProps) {
+export function SpecialCardModal({ visible, onClose, specialCard, onConfirm, confirmText }: SpecialCardModalProps) {
   const renderCardIcon = (icon: string, type: string, size = 32, color = COLORS.primary) => {
     if (type === 'FontAwesome5') return <FontAwesome5 name={icon as any} size={size} color={color} />;
     return <MaterialCommunityIcons name={icon as any} size={size + 4} color={color} />;
@@ -24,7 +26,7 @@ export function SpecialCardModal({ visible, onClose, specialCard }: SpecialCardM
       visible={visible}
       onClose={onClose}
       title="CARTA ESPECIAL!"
-      buttonText="FECHAR"
+      buttonText={onConfirm ? "CANCELAR" : "FECHAR"}
       icon={<MaterialCommunityIcons name="cards-playing" size={48} color={COLORS.primary} />}
     >
       <View style={styles.specialCard}>
@@ -67,6 +69,17 @@ export function SpecialCardModal({ visible, onClose, specialCard }: SpecialCardM
             <Text style={styles.progValue}>{specialCard.usage}</Text>
           </View>
         </View>
+
+        {onConfirm && (
+          <TouchableOpacity 
+            style={styles.confirmButton} 
+            onPress={onConfirm}
+          >
+            <MaterialCommunityIcons name="check-circle" size={24} color="#FFF" />
+            <Text style={styles.confirmButtonText}>{confirmText || 'USAR AGORA'}</Text>
+          </TouchableOpacity>
+        )}
+
         <View style={[styles.specialCardCornerBottom, { transform: [{ rotate: '180deg' }] }]}>
           {renderCardIcon(specialCard.icon, specialCard.type, 24)}
         </View>
@@ -119,6 +132,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#EEE',
     paddingTop: 10,
+    marginBottom: 10,
   },
   progInfo: {
     width: '100%',
@@ -135,5 +149,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: COLORS.textDark,
+  },
+  confirmButton: {
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    borderBottomWidth: 4,
+    borderColor: COLORS.dark,
+    width: '100%',
+  },
+  confirmButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '900',
   },
 });
