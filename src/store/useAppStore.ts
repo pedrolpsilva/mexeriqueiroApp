@@ -76,7 +76,7 @@ interface AppState {
 
   // Game Loop State
   currentRoundState: {
-    specialCard: any | null;
+    specialCard: SpecialCard | null;
     word: string | null;
     theme: any | null;
     isWordVisible: boolean;
