@@ -149,7 +149,7 @@ export const useAppStore = create<AppState>()(
 
       specialCardsData: [
         {
-          id: 'coringa',
+          id: 'coringa', status: 'active', points: 10, rarity: 1,
           title: 'Coringa',
           desc: 'Escolhe o tema, ganha 2 dicas extras ou troca a carta.',
           progression: 'Flexibilidade total',
@@ -158,7 +158,7 @@ export const useAppStore = create<AppState>()(
           type: 'MaterialCommunityIcons',
         },
         {
-          id: 'gemeos',
+          id: 'gemeos', status: 'active', points: 10, rarity: 1,
           title: 'Gêmeo do Mau',
           desc: 'O time rival ganha os mesmos pontos que você nesta rodada.',
           progression: 'Risco compartilhado',
@@ -168,7 +168,7 @@ export const useAppStore = create<AppState>()(
           volatile: true,
         },
         {
-          id: 'bomb',
+          id: 'bomb', status: 'active', points: 10, rarity: 1,
           title: 'Autodestruição',
           desc: 'O time perde a rodada instantaneamente.',
           progression: 'Derrota imediata',
@@ -177,7 +177,7 @@ export const useAppStore = create<AppState>()(
           type: 'MaterialCommunityIcons',
         },
         {
-          id: 'fratura',
+          id: 'fratura', status: 'active', points: 10, rarity: 1,
           title: 'Fratura',
           desc: 'Se errar, perde pontos conforme o tema.',
           progression: 'Penalidade alta',
@@ -186,7 +186,7 @@ export const useAppStore = create<AppState>()(
           type: 'MaterialCommunityIcons',
         },
         {
-          id: 'riqueza',
+          id: 'riqueza', status: 'active', points: 10, rarity: 1,
           title: 'Riqueza',
           desc: 'Acerto garante o valor máximo do cronômetro.',
           progression: 'Recompensa máxima',
@@ -196,7 +196,7 @@ export const useAppStore = create<AppState>()(
           volatile: true,
         },
         {
-          id: 'dose',
+          id: 'dose', status: 'active', points: 10, rarity: 1,
           title: 'Dose Dupla',
           desc: 'Garante uma rodada extra.',
           progression: 'Mais tempo',
@@ -205,7 +205,7 @@ export const useAppStore = create<AppState>()(
           type: 'MaterialCommunityIcons',
         },
         {
-          id: 'oportuno',
+          id: 'oportuno', status: 'active', points: 10, rarity: 1,
           title: 'Oportuno',
           desc: 'Dá uma dica extra ao time.',
           progression: 'Ajuda extra',
