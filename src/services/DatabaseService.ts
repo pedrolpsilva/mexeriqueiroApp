@@ -77,9 +77,7 @@ export const syncDatabase = async () => {
     const specialRes = await fetch(SPECIAL_SHEET_URL);
     if (!specialRes.ok) throw new Error('Falha ao baixar deck especial');
     const specialCsv = await specialRes.text();
-    console.log(0, specialCsv)
     const specialLines = specialCsv.split(/\r?\n/);
-    console.log(1, specialLines)
 
     const specialCards: SpecialCard[] = [];
     const specialHeaders = parseCsvLine(specialLines[0]);
@@ -117,8 +115,6 @@ export const syncDatabase = async () => {
         type: iconInfo.type,
       });
     }
-
-    console.log(specialCards)
 
     // 3. Save to Store
     store.setWords(wordData);
