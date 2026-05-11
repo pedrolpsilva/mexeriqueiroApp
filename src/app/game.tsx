@@ -31,6 +31,7 @@ const THEMES = [
   { id: 'Lazer', label: 'Lazer', key: 'L' },
   { id: 'Especial', label: 'Especial', key: 'S' },
 ];
+const COMMON_THEMES = THEMES.filter(t => t.key !== 'S');
 
 export default function GameScreen() {
   const router = useRouter();
@@ -69,7 +70,7 @@ export default function GameScreen() {
   // Filter themes based on settings
   const availableThemes = specialCardsEnabled
     ? THEMES
-    : THEMES.filter(t => t.key !== 'S');
+    : COMMON_THEMES;
 
   // Filter special cards based on selection and dynamic data
   const baseCardsData = specialCardsData;
@@ -168,7 +169,7 @@ export default function GameScreen() {
     );
 
     // Visual shuffle shows all faces equally
-    const shuffleThemes = specialCardsEnabled ? THEMES : THEMES.filter(t => t.key !== 'S');
+    const shuffleThemes = availableThemes;
     let interval = setInterval(() => {
       const tempRes = shuffleThemes[Math.floor(Math.random() * shuffleThemes.length)].key;
       setDiceResult(tempRes);
@@ -182,8 +183,7 @@ export default function GameScreen() {
 
       if (specialCard || !specialCardsEnabled) {
         // Forced common theme if special card already active or special cards disabled
-        const commonThemes = THEMES.filter(t => t.key !== 'S');
-        finalTheme = commonThemes[Math.floor(Math.random() * commonThemes.length)];
+        finalTheme = COMMON_THEMES[Math.floor(Math.random() * COMMON_THEMES.length)];
       } else {
         // Weighted logic: 18% each common (90% total), 10% Special
         // if (rand < 18) finalTheme = THEMES[0];      // Abstrato
