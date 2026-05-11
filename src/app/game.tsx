@@ -38,6 +38,7 @@ const THEMES = [
   { id: 'Lazer', label: 'Lazer', key: 'L' },
   { id: 'Especial', label: 'Especial', key: 'S' },
 ];
+const COMMON_THEMES = THEMES.filter(t => t.key !== 'S');
 
 export default function GameScreen() {
   const router = useRouter();
@@ -76,7 +77,7 @@ export default function GameScreen() {
   // Filter themes based on settings
   const availableThemes = specialCardsEnabled
     ? THEMES
-    : THEMES.filter(t => t.key !== 'S');
+    : COMMON_THEMES;
 
   // Filter special cards based on selection and dynamic data
   const baseCardsData = specialCardsData;
@@ -175,7 +176,7 @@ export default function GameScreen() {
     );
 
     // Visual shuffle shows all faces equally
-    const shuffleThemes = specialCardsEnabled ? THEMES : THEMES.filter(t => t.key !== 'S');
+    const shuffleThemes = availableThemes;
     let interval = setInterval(() => {
       const tempRes = shuffleThemes[Math.floor(secureRandom() * shuffleThemes.length)].key;
       setDiceResult(tempRes);
