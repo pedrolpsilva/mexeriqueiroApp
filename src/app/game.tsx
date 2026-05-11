@@ -40,6 +40,8 @@ const THEMES = [
 ];
 const COMMON_THEMES = THEMES.filter(t => t.key !== 'S');
 
+const COMMON_THEMES = THEMES.filter(t => t.key !== 'S');
+
 export default function GameScreen() {
   const router = useRouter();
   const {
@@ -176,6 +178,7 @@ export default function GameScreen() {
     );
 
     // Visual shuffle shows all faces equally
+    const shuffleThemes = specialCardsEnabled ? THEMES : COMMON_THEMES;
     let interval = setInterval(() => {
       const tempRes = availableThemes[Math.floor(Math.random() * availableThemes.length)].key;
       setDiceResult(tempRes);
@@ -189,8 +192,7 @@ export default function GameScreen() {
 
       if (specialCard || !specialCardsEnabled) {
         // Forced common theme if special card already active or special cards disabled
-        const commonThemes = THEMES.filter(t => t.key !== 'S');
-        finalTheme = commonThemes[Math.floor(secureRandom() * commonThemes.length)];
+        finalTheme = COMMON_THEMES[Math.floor(Math.random() * COMMON_THEMES.length)];
       } else {
         // Weighted logic: 18% each common (90% total), 10% Special
         // if (rand < 18) finalTheme = THEMES[0];      // Abstrato
