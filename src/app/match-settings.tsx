@@ -21,6 +21,16 @@ import { COLORS } from '../constants/theme';
 
 
 
+interface PlayerTagProps {
+  name: string;
+  index: number;
+  team: 'A' | 'B';
+  onRemove: () => void;
+  onDragStart: (player: { team: 'A' | 'B'; index: number; name: string }) => void;
+  onDragEnd: (x: number, y: number) => void;
+  onLayout: (layout: { x: number; y: number; width: number; height: number }) => void;
+}
+
 export default function MatchSettings() {
   const router = useRouter();
   const { language, teamA: storedA, teamB: storedB, setTeams, setLeaderIndices, setLanguage } = useAppStore();
@@ -206,7 +216,7 @@ export default function MatchSettings() {
                   onRemove={() => removePlayer('A', index)}
                   onDragStart={setDraggingPlayer}
                   onDragEnd={(x: number, y: number) => movePlayer('A', index, x, y)}
-                  onLayout={(layout: any) => {
+                  onLayout={(layout: { x: number; y: number; width: number; height: number }) => {
                     playerLayouts.current[`A-${player}-${index}`] = layout;
                   }}
                 />
@@ -239,7 +249,7 @@ export default function MatchSettings() {
                   onRemove={() => removePlayer('B', index)}
                   onDragStart={setDraggingPlayer}
                   onDragEnd={(x: number, y: number) => movePlayer('B', index, x, y)}
-                  onLayout={(layout: any) => {
+                  onLayout={(layout: { x: number; y: number; width: number; height: number }) => {
                     playerLayouts.current[`B-${player}-${index}`] = layout;
                   }}
                 />
@@ -274,7 +284,7 @@ export default function MatchSettings() {
   );
 }
 
-const PlayerTag = ({ name, index, team, onRemove, onDragStart, onDragEnd, onLayout }: any) => {
+const PlayerTag = ({ name, index, team, onRemove, onDragStart, onDragEnd, onLayout }: PlayerTagProps) => {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const isDragging = useSharedValue(false);

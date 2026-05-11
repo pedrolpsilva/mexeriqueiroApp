@@ -2,6 +2,7 @@ import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-ico
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Crypto from 'expo-crypto';
 import Animated, {
   interpolateColor,
   useAnimatedProps,
@@ -23,6 +24,12 @@ import { useAppStore } from '../store/useAppStore';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+const secureRandom = () => {
+  const array = new Uint32Array(1);
+  Crypto.getRandomValues(array);
+  return array[0] / 4294967296; // 2^32
+};
+
 const THEMES = [
   { id: 'Abstrato', label: 'Abstrato', key: 'A' },
   { id: 'Vivo', label: 'Vivo', key: 'V' },
@@ -31,6 +38,9 @@ const THEMES = [
   { id: 'Lazer', label: 'Lazer', key: 'L' },
   { id: 'Especial', label: 'Especial', key: 'S' },
 ];
+const COMMON_THEMES = THEMES.filter(t => t.key !== 'S');
+
+const COMMON_THEMES = THEMES.filter(t => t.key !== 'S');
 
 export default function GameScreen() {
   const router = useRouter();
@@ -69,7 +79,7 @@ export default function GameScreen() {
   // Filter themes based on settings
   const availableThemes = specialCardsEnabled
     ? THEMES
-    : THEMES.filter(t => t.key !== 'S');
+    : COMMON_THEMES;
 
   // Filter special cards based on selection and dynamic data
   const baseCardsData = specialCardsData;
@@ -168,22 +178,21 @@ export default function GameScreen() {
     );
 
     // Visual shuffle shows all faces equally
-    const shuffleThemes = specialCardsEnabled ? THEMES : THEMES.filter(t => t.key !== 'S');
+    const shuffleThemes = specialCardsEnabled ? THEMES : COMMON_THEMES;
     let interval = setInterval(() => {
-      const tempRes = shuffleThemes[Math.floor(Math.random() * shuffleThemes.length)].key;
+      const tempRes = availableThemes[Math.floor(Math.random() * availableThemes.length)].key;
       setDiceResult(tempRes);
     }, 80);
 
     setTimeout(() => {
       clearInterval(interval);
 
-      const rand = Math.random() * 100;
+      const rand = secureRandom() * 100;
       let finalTheme;
 
       if (specialCard || !specialCardsEnabled) {
         // Forced common theme if special card already active or special cards disabled
-        const commonThemes = THEMES.filter(t => t.key !== 'S');
-        finalTheme = commonThemes[Math.floor(Math.random() * commonThemes.length)];
+        finalTheme = COMMON_THEMES[Math.floor(Math.random() * COMMON_THEMES.length)];
       } else {
         // Weighted logic: 18% each common (90% total), 10% Special
         // if (rand < 18) finalTheme = THEMES[0];      // Abstrato
@@ -210,7 +219,7 @@ export default function GameScreen() {
       setTimeout(() => {
         if (finalTheme.key === 'S') {
           const randomSpecial = availableSpecialCards.length > 0
-            ? availableSpecialCards[Math.floor(Math.random() * availableSpecialCards.length)]
+            ? availableSpecialCards[Math.floor(secureRandom() * availableSpecialCards.length)]
             : null;
 
           if (randomSpecial) {
@@ -247,7 +256,7 @@ export default function GameScreen() {
           // words is a Record<string, string[]> from store
           const themeWords = words[finalTheme.label] || [];
           const randomWord = themeWords.length > 0
-            ? themeWords[Math.floor(Math.random() * themeWords.length)]
+            ? themeWords[Math.floor(secureRandom() * themeWords.length)]
             : 'Palavra não encontrada';
 
           setRoundState({
