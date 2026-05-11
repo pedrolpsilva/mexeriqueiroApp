@@ -47,10 +47,21 @@ export const syncDatabase = async () => {
   store.setSyncStatus('syncing');
 
   try {
-    // 1. Fetch Common Cards
-    const commonRes = await fetch(COMMON_SHEET_URL);
+    // 1. Fetch Data Concurrently
+    const [commonRes, specialRes] = await Promise.all([
+      fetch(COMMON_SHEET_URL),
+      fetch(SPECIAL_SHEET_URL)
+    ]);
+
     if (!commonRes.ok) throw new Error('Falha ao baixar deck comum');
-    const commonCsv = await commonRes.text();
+    if (!specialRes.ok) throw new Error('Falha ao baixar deck especial');
+
+    const [commonCsv, specialCsv] = await Promise.all([
+      commonRes.text(),
+      specialRes.text()
+    ]);
+
+    // 2. Parse Common Cards
     const commonLines = commonCsv.split(/\r?\n/);
 
     const commonHeaders = parseCsvLine(commonLines[0]);
