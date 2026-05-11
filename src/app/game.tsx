@@ -168,9 +168,8 @@ export default function GameScreen() {
     );
 
     // Visual shuffle shows all faces equally
-    const shuffleThemes = specialCardsEnabled ? THEMES : THEMES.filter(t => t.key !== 'S');
     let interval = setInterval(() => {
-      const tempRes = shuffleThemes[Math.floor(Math.random() * shuffleThemes.length)].key;
+      const tempRes = availableThemes[Math.floor(Math.random() * availableThemes.length)].key;
       setDiceResult(tempRes);
     }, 80);
 
