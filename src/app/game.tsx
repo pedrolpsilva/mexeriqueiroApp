@@ -176,9 +176,8 @@ export default function GameScreen() {
     );
 
     // Visual shuffle shows all faces equally
-    const shuffleThemes = availableThemes;
     let interval = setInterval(() => {
-      const tempRes = shuffleThemes[Math.floor(secureRandom() * shuffleThemes.length)].key;
+      const tempRes = availableThemes[Math.floor(Math.random() * availableThemes.length)].key;
       setDiceResult(tempRes);
     }, 80);
 
