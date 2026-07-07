@@ -1,8 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 
-type Language = 'BR' | 'US' | 'ES';
+type Language = "BR" | "US" | "ES";
 
 interface TeamPlayer {
   id: string;
@@ -16,11 +16,11 @@ export interface SpecialCard {
   status: string;
   points: number;
   progression: string;
-  usage: string; // 'Instantâneo' | 'Livre (Inventário)'
+  usage: "Livre" | "Instantâneo";
   rarity: number;
   icon: string;
   type: string;
-  volatile?: boolean; // Passa para o rival se perder
+  volatile?: boolean;
 }
 
 interface AppState {
@@ -52,10 +52,10 @@ interface AppState {
 
   // Database / Words
   words: Record<string, string[]>;
-  syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
+  syncStatus: "idle" | "syncing" | "synced" | "error";
   lastSync: number | null;
   setWords: (words: Record<string, string[]>) => void;
-  setSyncStatus: (status: 'idle' | 'syncing' | 'synced' | 'error') => void;
+  setSyncStatus: (status: "idle" | "syncing" | "synced" | "error") => void;
 
   specialCardsData: SpecialCard[];
   setSpecialCardsData: (cards: SpecialCard[]) => void;
@@ -70,7 +70,7 @@ interface AppState {
     themeStats: Record<string, { hits: number; misses: number }>; // theme label -> hits/misses
     specialCardsUsed: string[]; // list of special card IDs used
   };
-  updateMatchStats: (stats: Partial<AppState['matchStats']>) => void;
+  updateMatchStats: (stats: Partial<AppState["matchStats"]>) => void;
   resetMatchStats: () => void;
   resetMatch: () => void; // alias for resetMatchStats, also clears inventories
 
@@ -89,16 +89,16 @@ interface AppState {
     activeCard: SpecialCard | null; // Card currently being used in the round
     onboardingShown: boolean;
   };
-  setRoundState: (state: Partial<AppState['currentRoundState']>) => void;
+  setRoundState: (state: Partial<AppState["currentRoundState"]>) => void;
   resetRoundState: () => void;
-  addToInventory: (team: 'A' | 'B', card: SpecialCard) => void;
-  removeFromInventory: (team: 'A' | 'B', cardId: string) => void;
+  addToInventory: (team: "A" | "B", card: SpecialCard) => void;
+  removeFromInventory: (team: "A" | "B", cardId: string) => void;
 }
 
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
-      language: 'BR',
+      language: "BR",
       setLanguage: (lang) => set({ language: lang }),
 
       teamA: [],
@@ -106,7 +106,8 @@ export const useAppStore = create<AppState>()(
       leaderIndexA: 0,
       leaderIndexB: 0,
       setTeams: (teamA, teamB) => set({ teamA, teamB }),
-      setLeaderIndices: (leaderIndexA, leaderIndexB) => set({ leaderIndexA, leaderIndexB }),
+      setLeaderIndices: (leaderIndexA, leaderIndexB) =>
+        set({ leaderIndexA, leaderIndexB }),
 
       scoreToWin: 20,
       timer: 30,
@@ -126,13 +127,15 @@ export const useAppStore = create<AppState>()(
         dose: true,
         oportuno: true,
       },
-      setSpecialCardsEnabled: (enabled) => set({ specialCardsEnabled: enabled }),
-      toggleSpecialCard: (cardId) => set((state) => ({
-        selectedCards: {
-          ...state.selectedCards,
-          [cardId]: !state.selectedCards[cardId],
-        }
-      })),
+      setSpecialCardsEnabled: (enabled) =>
+        set({ specialCardsEnabled: enabled }),
+      toggleSpecialCard: (cardId) =>
+        set((state) => ({
+          selectedCards: {
+            ...state.selectedCards,
+            [cardId]: !state.selectedCards[cardId],
+          },
+        })),
 
       // Database / Words
       words: {
@@ -142,76 +145,98 @@ export const useAppStore = create<AppState>()(
         Objeto: [],
         Lazer: [],
       },
-      syncStatus: 'idle',
+      syncStatus: "idle",
       lastSync: null,
-      setWords: (words) => set({ words, syncStatus: 'synced', lastSync: Date.now() }),
+      setWords: (words) =>
+        set({ words, syncStatus: "synced", lastSync: Date.now() }),
       setSyncStatus: (status) => set({ syncStatus: status }),
 
       specialCardsData: [
         {
-          id: 'coringa', status: 'active', points: 10, rarity: 1,
-          title: 'Coringa',
-          desc: 'Escolhe o tema, ganha 2 dicas extras ou troca a carta.',
-          progression: 'Flexibilidade total',
-          usage: 'Livre (Inventário)',
-          icon: 'cards-playing-outline',
-          type: 'MaterialCommunityIcons',
+          id: "coringa",
+          status: "active",
+          points: 10,
+          rarity: 1,
+          title: "Coringa",
+          desc: "Se o time acertar a palavra ganhará 30% da pontuação para vitória",
+          progression: "30% de pontos",
+          usage: "Livre",
+          icon: "cards-playing-outline",
+          type: "MaterialCommunityIcons",
         },
         {
-          id: 'gemeos', status: 'active', points: 10, rarity: 1,
-          title: 'Gêmeo do Mau',
-          desc: 'O time rival ganha os mesmos pontos que você nesta rodada.',
-          progression: 'Risco compartilhado',
-          usage: 'Durante a rodada',
-          icon: 'user-friends',
-          type: 'FontAwesome5',
+          id: "gemeos",
+          status: "active",
+          points: 10,
+          rarity: 1,
+          title: "Gêmeo do Mau",
+          desc: "O time rival ganha os mesmos pontos que você nesta rodada.",
+          progression: "Risco compartilhado",
+          usage: "Instantâneo",
+          icon: "user-friends",
+          type: "FontAwesome5",
           volatile: true,
         },
         {
-          id: 'bomb', status: 'active', points: 10, rarity: 1,
-          title: 'Autodestruição',
-          desc: 'O time perde a rodada instantaneamente.',
-          progression: 'Derrota imediata',
-          usage: 'Instantâneo',
-          icon: 'bomb',
-          type: 'MaterialCommunityIcons',
+          id: "bomb",
+          status: "active",
+          points: 10,
+          rarity: 1,
+          title: "Autodestruição",
+          desc: "O time perde a rodada instantaneamente, passando a vez ao rival sem a possibilidade de roubo de palavra.",
+          progression: "Derrota imediata",
+          usage: "Instantâneo",
+          icon: "bomb",
+          type: "MaterialCommunityIcons",
         },
         {
-          id: 'fratura', status: 'active', points: 10, rarity: 1,
-          title: 'Fratura',
-          desc: 'Se errar, perde pontos conforme o tema.',
-          progression: 'Penalidade alta',
-          usage: 'Fim da rodada',
-          icon: 'bone',
-          type: 'MaterialCommunityIcons',
+          id: "fratura",
+          status: "active",
+          points: 10,
+          rarity: 1,
+          title: "Fratura",
+          desc: "Caso o time não acerte a PALAVRA DA RODADA ou o tempo acabe, esta carta irá descontar 3 pontos ao time",
+          progression: "Penalidade alta",
+          usage: "Instantâneo",
+          icon: "bone",
+          type: "MaterialCommunityIcons",
         },
         {
-          id: 'riqueza', status: 'active', points: 10, rarity: 1,
-          title: 'Riqueza',
-          desc: 'Acerto garante o valor máximo do cronômetro.',
-          progression: 'Recompensa máxima',
-          usage: 'Livre (Inventário)',
-          icon: 'coins',
-          type: 'FontAwesome5',
+          id: "riqueza",
+          status: "active",
+          points: 10,
+          rarity: 1,
+          title: "Riqueza",
+          desc: "Acerto garante o valor máximo do cronômetro.",
+          progression: "Recompensa máxima",
+          usage: "Livre",
+          icon: "coins",
+          type: "FontAwesome5",
           volatile: true,
         },
         {
-          id: 'dose', status: 'active', points: 10, rarity: 1,
-          title: 'Dose Dupla',
-          desc: 'Garante uma rodada extra.',
-          progression: 'Mais tempo',
-          usage: 'Imediato',
-          icon: 'cards-playing',
-          type: 'MaterialCommunityIcons',
+          id: "dose",
+          status: "active",
+          points: 10,
+          rarity: 1,
+          title: "Dose Dupla",
+          desc: "Garante uma rodada extra.",
+          progression: "Mais tempo",
+          usage: "Instantâneo",
+          icon: "cards-playing",
+          type: "MaterialCommunityIcons",
         },
         {
-          id: 'oportuno', status: 'active', points: 10, rarity: 1,
-          title: 'Oportuno',
-          desc: 'Dá uma dica extra ao time.',
-          progression: 'Ajuda extra',
-          usage: 'Imediato',
-          icon: 'lightbulb-on',
-          type: 'MaterialCommunityIcons',
+          id: "oportuno",
+          status: "active",
+          points: 10,
+          rarity: 1,
+          title: "Oportuno",
+          desc: "Dá uma dica extra ao time.",
+          progression: "Ajuda extra",
+          usage: "Livre",
+          icon: "lightbulb-on",
+          type: "MaterialCommunityIcons",
         },
       ],
       setSpecialCardsData: (cards) => set({ specialCardsData: cards }),
@@ -225,45 +250,50 @@ export const useAppStore = create<AppState>()(
         themeStats: {},
         specialCardsUsed: [],
       },
-      updateMatchStats: (newStats) => set((state) => ({
-        matchStats: { ...state.matchStats, ...newStats }
-      })),
-      resetMatchStats: () => set({
-        matchStats: {
-          startTime: Date.now(),
-          totalRounds: 0,
-          finalScoreA: 0,
-          finalScoreB: 0,
-          leaderPoints: {},
-          themeStats: {},
-          specialCardsUsed: [],
-        }
-      }),
-      resetMatch: () => set((state) => ({
-        matchStats: {
-          startTime: null,
-          totalRounds: 0,
-          finalScoreA: 0,
-          finalScoreB: 0,
-          leaderPoints: {},
-          themeStats: {},
-          specialCardsUsed: [],
-        },
-        currentRoundState: {
-          ...state.currentRoundState,
-          specialCard: null,
-          word: null,
-          theme: null,
-          isWordVisible: false,
-          timerValue: state.timer || 30,
-          isTimerRunning: false,
-          roundStarted: false,
-          isStealing: false,
-          inventoryA: [],
-          inventoryB: [],
-          activeCard: null,
-        }
-      })),
+      updateMatchStats: (newStats) =>
+        set((state) => ({
+          matchStats: { ...state.matchStats, ...newStats },
+        })),
+      resetMatchStats: () =>
+        set({
+          matchStats: {
+            startTime: Date.now(),
+            totalRounds: 0,
+            finalScoreA: 0,
+            finalScoreB: 0,
+            leaderPoints: {},
+            themeStats: {},
+            specialCardsUsed: [],
+          },
+        }),
+      resetMatch: () =>
+        set((state) => ({
+          leaderIndexA: 0,
+          leaderIndexB: 0,
+          matchStats: {
+            startTime: null,
+            totalRounds: 0,
+            finalScoreA: 0,
+            finalScoreB: 0,
+            leaderPoints: {},
+            themeStats: {},
+            specialCardsUsed: [],
+          },
+          currentRoundState: {
+            ...state.currentRoundState,
+            specialCard: null,
+            word: null,
+            theme: null,
+            isWordVisible: false,
+            timerValue: state.timer || 30,
+            isTimerRunning: false,
+            roundStarted: false,
+            isStealing: false,
+            inventoryA: [],
+            inventoryB: [],
+            activeCard: null,
+          },
+        })),
 
       // Game Loop State
       currentRoundState: {
@@ -280,49 +310,55 @@ export const useAppStore = create<AppState>()(
         activeCard: null,
         onboardingShown: false,
       },
-      setRoundState: (newState) => set((state) => ({
-        currentRoundState: { ...state.currentRoundState, ...newState }
-      })),
-      resetRoundState: () => set((state) => ({
-        currentRoundState: {
-          ...state.currentRoundState,
-          specialCard: null,
-          word: null,
-          theme: null,
-          isWordVisible: false,
-          timerValue: state.timer || 30,
-          isTimerRunning: false,
-          roundStarted: false,
-          isStealing: false,
-          activeCard: null,
-        }
-      })),
-      addToInventory: (team, card) => set((state) => {
-        const inventoryKey = team === 'A' ? 'inventoryA' : 'inventoryB';
-        const currentInv: SpecialCard[] = state.currentRoundState[inventoryKey] ?? [];
-        if (currentInv.length < 2) {
+      setRoundState: (newState) =>
+        set((state) => ({
+          currentRoundState: { ...state.currentRoundState, ...newState },
+        })),
+      resetRoundState: () =>
+        set((state) => ({
+          currentRoundState: {
+            ...state.currentRoundState,
+            specialCard: null,
+            word: null,
+            theme: null,
+            isWordVisible: false,
+            timerValue: state.timer || 30,
+            isTimerRunning: false,
+            roundStarted: false,
+            isStealing: false,
+            activeCard: null,
+          },
+        })),
+      addToInventory: (team, card) =>
+        set((state) => {
+          const inventoryKey = team === "A" ? "inventoryA" : "inventoryB";
+          const currentInv: SpecialCard[] =
+            state.currentRoundState[inventoryKey] ?? [];
+          if (currentInv.length < 2) {
+            return {
+              currentRoundState: {
+                ...state.currentRoundState,
+                [inventoryKey]: [...currentInv, card],
+              },
+            };
+          }
+          return state; // Handle overflow in UI (replacement logic)
+        }),
+      removeFromInventory: (team, cardId) =>
+        set((state) => {
+          const inventoryKey = team === "A" ? "inventoryA" : "inventoryB";
+          const currentInv: SpecialCard[] =
+            state.currentRoundState[inventoryKey] ?? [];
           return {
             currentRoundState: {
               ...state.currentRoundState,
-              [inventoryKey]: [...currentInv, card]
-            }
+              [inventoryKey]: currentInv.filter((c) => c.id !== cardId),
+            },
           };
-        }
-        return state; // Handle overflow in UI (replacement logic)
-      }),
-      removeFromInventory: (team, cardId) => set((state) => {
-        const inventoryKey = team === 'A' ? 'inventoryA' : 'inventoryB';
-        const currentInv: SpecialCard[] = state.currentRoundState[inventoryKey] ?? [];
-        return {
-          currentRoundState: {
-            ...state.currentRoundState,
-            [inventoryKey]: currentInv.filter(c => c.id !== cardId)
-          }
-        };
-      }),
+        }),
     }),
     {
-      name: 'mexeriqueiro-storage',
+      name: "mexeriqueiro-storage",
       storage: createJSONStorage(() => AsyncStorage),
       // Deep-merge persisted state so new fields get their defaults
       merge: (persistedState: any, currentState: AppState): AppState => ({
@@ -342,9 +378,10 @@ export const useAppStore = create<AppState>()(
           inventoryA: persistedState?.currentRoundState?.inventoryA ?? [],
           inventoryB: persistedState?.currentRoundState?.inventoryB ?? [],
           activeCard: persistedState?.currentRoundState?.activeCard ?? null,
-          onboardingShown: persistedState?.currentRoundState?.onboardingShown ?? false,
+          onboardingShown:
+            persistedState?.currentRoundState?.onboardingShown ?? false,
         },
       }),
-    }
-  )
+    },
+  ),
 );

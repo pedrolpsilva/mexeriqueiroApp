@@ -32,6 +32,16 @@ function parseCsvLine(line: string): string[] {
 const COMMON_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1kKMsOyfQsI7nxjjNL0mi6IXTry7V-tFH/export?format=csv&gid=299054325';
 const SPECIAL_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1kKMsOyfQsI7nxjjNL0mi6IXTry7V-tFH/export?format=csv&gid=1243982418';
 
+const ID_MAPPING: Record<string, string> = {
+  '1': 'coringa',
+  '2': 'gemeos',
+  '3': 'bomb',
+  '4': 'fratura',
+  '5': 'riqueza',
+  '6': 'dose',
+  '7': 'oportuno',
+};
+
 const ICON_MAPPING: Record<string, { icon: string, type: string }> = {
   coringa: { icon: 'cards-playing-outline', type: 'MaterialCommunityIcons' },
   gemeos: { icon: 'user-friends', type: 'FontAwesome5' },
@@ -40,6 +50,16 @@ const ICON_MAPPING: Record<string, { icon: string, type: string }> = {
   riqueza: { icon: 'coins', type: 'FontAwesome5' },
   dose: { icon: 'cards-playing', type: 'MaterialCommunityIcons' },
   oportuno: { icon: 'lightbulb-on', type: 'MaterialCommunityIcons' },
+};
+
+const USAGE_MAPPING: Record<string, 'Livre' | 'Instantâneo'> = {
+  coringa: 'Livre',
+  gemeos: 'Instantâneo',
+  bomb: 'Instantâneo',
+  fratura: 'Instantâneo',
+  riqueza: 'Livre',
+  dose: 'Instantâneo',
+  oportuno: 'Livre',
 };
 
 export const syncDatabase = async () => {
@@ -85,9 +105,7 @@ export const syncDatabase = async () => {
     }
 
     // 2. Fetch Special Cards
-    const specialRes = await fetch(SPECIAL_SHEET_URL);
     if (!specialRes.ok) throw new Error('Falha ao baixar deck especial');
-    const specialCsv = await specialRes.text();
     const specialLines = specialCsv.split(/\r?\n/);
 
     const specialCards: SpecialCard[] = [];
@@ -110,20 +128,31 @@ export const syncDatabase = async () => {
       if (!specialLines[i].trim()) continue;
       const values = parseCsvLine(specialLines[i]);
 
-      const id = values[hIdx.id]?.toLowerCase() || '';
+      const rawId = values[hIdx.id]?.toLowerCase() || '';
+      const id = ID_MAPPING[rawId] || rawId;
       const iconInfo = ICON_MAPPING[id] || { icon: 'help-circle', type: 'Ionicons' };
 
+      const isCoringa = id === 'coringa';
+      const isFratura = id === 'fratura';
+      const isRiqueza = id === 'riqueza';
       specialCards.push({
         id,
-        title: values[hIdx.title],
-        desc: values[hIdx.desc],
+        title: isCoringa ? 'Coringa' : (isFratura ? 'Fratura' : (isRiqueza ? 'Riqueza' : values[hIdx.title])),
+        desc: isCoringa 
+          ? 'Se o time acertar a palavra ganhará 30% da pontuação para vitória' 
+          : isFratura 
+          ? 'Caso o time não acerte a PALAVRA DA RODADA ou o tempo acabe, esta carta irá descontar 3 pontos ao time' 
+          : isRiqueza
+          ? 'Acerto garante o valor máximo do cronômetro.'
+          : values[hIdx.desc],
         status: values[hIdx.status],
-        points: parseInt(values[hIdx.points]),
-        progression: values[hIdx.prog],
-        usage: values[hIdx.usage],
-        rarity: parseInt(values[hIdx.rarity]),
-        icon: values[hIdx.icon],
+        points: parseInt(values[hIdx.points]) || 0,
+        progression: isCoringa ? '30% de pontos' : (isFratura ? 'Penalidade alta' : (isRiqueza ? 'Recompensa máxima' : values[hIdx.prog])),
+        usage: USAGE_MAPPING[id] || 'Livre',
+        rarity: parseInt(values[hIdx.rarity]) || 1,
+        icon: iconInfo.icon || values[hIdx.icon] || 'help-circle',
         type: iconInfo.type,
+        volatile: id === 'gemeos' || id === 'riqueza',
       });
     }
 

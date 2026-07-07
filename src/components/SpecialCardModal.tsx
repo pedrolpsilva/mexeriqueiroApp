@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { CustomModal } from './CustomModal';
 import { COLORS } from '../constants/theme';
-import { SpecialCard } from '../store/useAppStore';
+import { SpecialCard, useAppStore } from '../store/useAppStore';
 
 interface SpecialCardModalProps {
   visible: boolean;
@@ -14,6 +14,9 @@ interface SpecialCardModalProps {
 }
 
 export function SpecialCardModal({ visible, onClose, specialCard, onConfirm, confirmText }: SpecialCardModalProps) {
+  const scoreToWin = useAppStore(state => state.scoreToWin);
+  const coringaPoints = Math.round(0.3 * scoreToWin);
+
   const renderCardIcon = (icon: string, type: string, size = 32, color = COLORS.primary) => {
     if (type === 'FontAwesome5') return <FontAwesome5 name={icon as any} size={size} color={color} />;
     return <MaterialCommunityIcons name={icon as any} size={size + 4} color={color} />;
@@ -45,7 +48,9 @@ export function SpecialCardModal({ visible, onClose, specialCard, onConfirm, con
           </View>
           <View style={styles.progInfo}>
             <Text style={styles.progLabel}>Pontos:</Text>
-            <Text style={styles.progValue}>{specialCard.points} pts</Text>
+            <Text style={styles.progValue}>
+              {specialCard.id === 'coringa' ? coringaPoints : specialCard.points} pts
+            </Text>
           </View>
           <View style={styles.progInfo}>
             <Text style={styles.progLabel}>Raridade:</Text>

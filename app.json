@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "mexeriqueiroapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -22,7 +22,8 @@
         "backgroundColor": "#FF8C00"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.totaltrac.mexeriqueiroApp"
     },
     "web": {
       "bundler": "metro",
@@ -31,7 +32,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

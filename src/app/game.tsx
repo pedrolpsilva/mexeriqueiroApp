@@ -1,9 +1,10 @@
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Crypto from 'expo-crypto';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import * as Crypto from 'expo-crypto';
 import Animated, {
+  cancelAnimation,
   interpolateColor,
   useAnimatedProps,
   useAnimatedStyle,
@@ -22,8 +23,6 @@ import { SpecialCardModal } from '../components/SpecialCardModal';
 import { COLORS } from '../constants/theme';
 import { useAppStore } from '../store/useAppStore';
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
 const secureRandom = () => {
   const array = new Uint32Array(1);
   Crypto.getRandomValues(array);
@@ -40,7 +39,15 @@ const THEMES = [
 ];
 const COMMON_THEMES = THEMES.filter(t => t.key !== 'S');
 
-const COMMON_THEMES = THEMES.filter(t => t.key !== 'S');
+const ID_MAPPING_LOCAL: Record<string, string> = {
+  '1': 'coringa',
+  '2': 'gemeos',
+  '3': 'bomb',
+  '4': 'fratura',
+  '5': 'riqueza',
+  '6': 'dose',
+  '7': 'oportuno',
+};
 
 export default function GameScreen() {
   const router = useRouter();
@@ -49,7 +56,7 @@ export default function GameScreen() {
     canPause, stealTurn, specialCardsEnabled, selectedCards, specialCardsData,
     leaderIndexA, leaderIndexB, setLeaderIndices,
     currentRoundState, setRoundState, resetRoundState, setLanguage,
-    matchStats, updateMatchStats
+    matchStats, updateMatchStats, resetMatch
   } = useAppStore();
 
   const [showLanguageModal, setShowLanguageModal] = useState(false);
@@ -76,6 +83,18 @@ export default function GameScreen() {
   const [diceResult, setDiceResult] = useState('?');
   const [showTooltip, setShowTooltip] = useState(false);
 
+  // Local state for special cards actions
+  const [wasTimerRunningBeforeModal, setWasTimerRunningBeforeModal] = useState(false);
+  const [showCoringaModal, setShowCoringaModal] = useState(false);
+  const [showCoringaThemeModal, setShowCoringaThemeModal] = useState(false);
+  const [showCoringaSwapSuccess, setShowCoringaSwapSuccess] = useState(false);
+  const [coringaNewCardTitle, setCoringaNewCardTitle] = useState('');
+  const [showDoseDuplaModal, setShowDoseDuplaModal] = useState(false);
+  const [doseDuplaTeamName, setDoseDuplaTeamName] = useState('');
+  const [showBombModal, setShowBombModal] = useState(false);
+  const [showOportunoModal, setShowOportunoModal] = useState(false);
+  const [oportunoPlayerName, setOportunoPlayerName] = useState<string | null>(null);
+
   // Filter themes based on settings
   const availableThemes = specialCardsEnabled
     ? THEMES
@@ -83,7 +102,10 @@ export default function GameScreen() {
 
   // Filter special cards based on selection and dynamic data
   const baseCardsData = specialCardsData;
-  const availableSpecialCards = baseCardsData.filter(card => selectedCards[card.id as keyof typeof selectedCards]);
+  const availableSpecialCards = baseCardsData.filter(card => {
+    const stringId = ID_MAPPING_LOCAL[card.id] || card.id;
+    return selectedCards[card.id] || selectedCards[stringId];
+  });
 
   // Scores and round
   const [scoreA, setScoreA] = useState(0.0);
@@ -95,29 +117,27 @@ export default function GameScreen() {
   const diceScale = useSharedValue(1);
   const shakeOffset = useSharedValue(0);
 
-  // Timer Animation Logic
+  // Timer circle calculations (static, non-animated-props to prevent unmount crashes)
   const radius = 72;
   const circumference = 2 * Math.PI * radius;
-  const progressShared = useSharedValue(0);
+  const progress = (defaultTimer - timerValue) / defaultTimer;
+  const strokeDashoffset = circumference * (1 - progress);
 
+  const getTimerColor = (p: number) => {
+    if (p < 0.35) return '#2ecc71';
+    if (p < 0.70) return '#f1c40f';
+    if (p < 0.86) return '#e66b1aff';
+    return '#f00';
+  };
+  const strokeColor = getTimerColor(progress);
+
+  // Cleanup animations on unmount to prevent leaks/crashes
   useEffect(() => {
-    // Calculate elapsed time percentage: (defaultTimer - timerValue) / defaultTimer
-    const progress = (defaultTimer - timerValue) / defaultTimer;
-    progressShared.value = withTiming(progress, { duration: 500 });
-  }, [timerValue, defaultTimer]);
-
-  const animatedProps = useAnimatedProps(() => {
-    const strokeColor = interpolateColor(
-      progressShared.value,
-      [0, 0.5, 0.51, 0.85, 0.86, 1],
-      ['#2ecc71', '#2ecc71', '#f1c40f', '#f1c40f', '#e74c3c', '#e74c3c']
-    );
-
-    return {
-      strokeDashoffset: circumference * (1 - progressShared.value),
-      stroke: strokeColor,
+    return () => {
+      cancelAnimation(diceScale);
+      cancelAnimation(shakeOffset);
     };
-  });
+  }, []);
 
   const timerShakeStyle = useAnimatedStyle(() => {
     return {
@@ -156,7 +176,7 @@ export default function GameScreen() {
 
   // Timer Effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: any;
     if (isTimerRunning && timerValue > 0) {
       interval = setInterval(() => {
         setRoundState({ timerValue: timerValue - 1 });
@@ -179,7 +199,7 @@ export default function GameScreen() {
 
     // Visual shuffle shows all faces equally
     const shuffleThemes = specialCardsEnabled ? THEMES : COMMON_THEMES;
-    let interval = setInterval(() => {
+    let interval: any = setInterval(() => {
       const tempRes = availableThemes[Math.floor(Math.random() * availableThemes.length)].key;
       setDiceResult(tempRes);
     }, 80);
@@ -191,17 +211,14 @@ export default function GameScreen() {
       let finalTheme;
 
       if (specialCard || !specialCardsEnabled) {
-        // Forced common theme if special card already active or special cards disabled
         finalTheme = COMMON_THEMES[Math.floor(Math.random() * COMMON_THEMES.length)];
       } else {
-        // Weighted logic: 18% each common (90% total), 10% Special
-        // if (rand < 18) finalTheme = THEMES[0];      // Abstrato
-        // else if (rand < 36) finalTheme = THEMES[1]; // Vivo
-        // else if (rand < 54) finalTheme = THEMES[2]; // Consumo
-        // else if (rand < 72) finalTheme = THEMES[3]; // Objeto
-        // else if (rand < 90) finalTheme = THEMES[4]; // Lazer
-        // else finalTheme = THEMES[5];                // Especial
-        finalTheme = THEMES[5];                // Especial
+        if (rand < 18) finalTheme = THEMES[0];      // Abstrato
+        else if (rand < 36) finalTheme = THEMES[1]; // Vivo
+        else if (rand < 54) finalTheme = THEMES[2]; // Consumo
+        else if (rand < 72) finalTheme = THEMES[3]; // Objeto
+        else if (rand < 90) finalTheme = THEMES[4]; // Lazer
+        else finalTheme = THEMES[5];                // Especial
       }
 
       setDiceResult(finalTheme.key);
@@ -220,7 +237,7 @@ export default function GameScreen() {
         if (finalTheme.key === 'S') {
           const randomSpecial = availableSpecialCards.length > 0
             ? availableSpecialCards[Math.floor(secureRandom() * availableSpecialCards.length)]
-            : null;
+            : (baseCardsData.length > 0 ? baseCardsData[Math.floor(secureRandom() * baseCardsData.length)] : null);
 
           if (randomSpecial) {
             // Track special card usage
@@ -230,8 +247,26 @@ export default function GameScreen() {
               });
             }
             if (randomSpecial.usage === 'Instantâneo') {
-              setRoundState({ activeCard: randomSpecial, specialCard: randomSpecial });
-              setShowSpecialModal(true);
+              if (randomSpecial.id === 'bomb') {
+                setRoundState({ activeCard: randomSpecial, specialCard: randomSpecial });
+                setShowBombModal(true);
+              } else {
+                // Pick random common theme and word immediately
+                const randomCommonTheme = COMMON_THEMES[Math.floor(secureRandom() * COMMON_THEMES.length)];
+                const themeWords = words[randomCommonTheme.label] || [];
+                const randomWord = themeWords.length > 0
+                  ? themeWords[Math.floor(secureRandom() * themeWords.length)]
+                  : 'Palavra não encontrada';
+
+                setRoundState({
+                  specialCard: randomSpecial,
+                  activeCard: randomSpecial,
+                  theme: randomCommonTheme,
+                  word: randomWord,
+                  timerValue: defaultTimer
+                });
+                setShowSpecialModal(true);
+              }
             } else {
               // Storable card
               const currentInv = isTeamATurn ? inventoryA : inventoryB;
@@ -251,6 +286,20 @@ export default function GameScreen() {
               }
             }
             setDiceResult('?');
+          } else {
+            // Fallback to a common theme if no special cards could be selected or loaded
+            const fallbackTheme = COMMON_THEMES[Math.floor(secureRandom() * COMMON_THEMES.length)];
+            const themeWords = words[fallbackTheme.label] || [];
+            const randomWord = themeWords.length > 0
+              ? themeWords[Math.floor(secureRandom() * themeWords.length)]
+              : 'Palavra não encontrada';
+
+            setRoundState({
+              theme: fallbackTheme,
+              word: randomWord,
+              timerValue: defaultTimer
+            });
+            setShowWordModal(true);
           }
         } else {
           // words is a Record<string, string[]> from store
@@ -280,12 +329,38 @@ export default function GameScreen() {
   };
 
   const handleScore = () => {
-    const points = timerValue >= 10 ? timerValue / 10 : 0.5;
+    let points = timerValue >= 10 ? timerValue / 10 : 0.5;
+
+    // CARD EFFECT: Riqueza (Livre)
+    if (activeCard?.id === 'riqueza') {
+      points = defaultTimer / 10;
+    }
+
+    // CARD EFFECT: Coringa (Livre)
+    if (activeCard?.id === 'coringa') {
+      points = 0.3 * scoreToWin;
+    }
+
+    let nextScoreA = scoreA;
+    let nextScoreB = scoreB;
 
     if (isTeamATurn) {
-      setScoreA(prev => prev + points);
+      nextScoreA = scoreA + points;
+      setScoreA(nextScoreA);
     } else {
-      setScoreB(prev => prev + points);
+      nextScoreB = scoreB + points;
+      setScoreB(nextScoreB);
+    }
+
+    // CARD EFFECT: Gêmeo do Mau (Instantâneo)
+    if (activeCard?.id === 'gemeos') {
+      if (isTeamATurn) {
+        nextScoreB = scoreB + points;
+        setScoreB(nextScoreB);
+      } else {
+        nextScoreA = scoreA + points;
+        setScoreA(nextScoreA);
+      }
     }
 
     // Track leader points and theme hits
@@ -307,10 +382,10 @@ export default function GameScreen() {
     if (isStealing) {
       setStealSuccessPoints(formatScore(points));
       setShowStealSuccessModal(true);
-      finishRound(); // Steal finishes, no rotation (it rotates after their normal round)
+      finishRound(false, nextScoreA, nextScoreB); // Steal finishes, no rotation
     } else {
       rotateLeader(isTeamATurn);
-      finishRound(true);
+      finishRound(true, nextScoreA, nextScoreB);
     }
   };
 
@@ -329,12 +404,42 @@ export default function GameScreen() {
     }
   };
 
+  const getFraturaPenalty = () => {
+    return 3;
+  };
+
+  const handleLossEffects = () => {
+    // 1. Fratura Penalty
+    if (activeCard?.id === 'fratura') {
+      const penalty = getFraturaPenalty();
+      if (isTeamATurn) {
+        setScoreA(prev => Math.max(0, prev - penalty));
+      } else {
+        setScoreB(prev => Math.max(0, prev - penalty));
+      }
+    }
+
+    // 2. Transfer active card if volatile (Riqueza / Gêmeo do Mau)
+    // Exclude 'gemeos' because it progresses on active steal and shouldn't go to rival's inventory
+    // Exclude 'riqueza' because it only transfers if the rival chooses to steal the word
+    if (activeCard && activeCard.volatile && activeCard.id !== 'gemeos' && activeCard.id !== 'riqueza') {
+      const rivalTeam = isTeamATurn ? 'B' : 'A';
+      const rivalInv = rivalTeam === 'A' ? inventoryA : inventoryB;
+      if (rivalInv.length < 2) {
+        addToInventory(rivalTeam, activeCard);
+      }
+    }
+
+    // 3. Transfer inventory volatile cards
+    handleTransferCards(isTeamATurn ? 'A' : 'B');
+  };
+
   const confirmCancel = () => {
     setShowCancelModal(false);
     const wasNormalRound = !isStealing;
 
     if (wasNormalRound) {
-      handleTransferCards(isTeamATurn ? 'A' : 'B');
+      handleLossEffects();
       rotateLeader(isTeamATurn);
 
       // Track theme miss for the team who cancelled
@@ -345,23 +450,32 @@ export default function GameScreen() {
       updateMatchStats({ themeStats: newThemeStats });
     }
 
-    if (stealTurn && timerValue > 0 && wasNormalRound) {
+    if (activeCard?.id === 'dose') {
+      finishRound(true);
+    } else if (stealTurn && timerValue > 0 && wasNormalRound) {
       setShowStealModal(true);
     } else {
-      // If it was a steal, we finish it without rotating (as per previous rule)
-      // If it was normal and no steal allowed, we finish it (rotation already happened above)
-      finishRound(true); // Pass a flag to indicate rotation already happened or is not needed
+      finishRound(true);
     }
   };
 
   const handleStealAccept = () => {
     setShowStealModal(false);
 
+    const originalTeamWasA = isTeamATurn;
+    const rivalTeam = originalTeamWasA ? 'B' : 'A';
+
     // Switch turn to rival for the steal attempt
-    // In a steal, the team who was NOT playing takes over.
-    // Rule: "Próximo Líder: No caso de um evento de Roubar a Vez, o app deve atualizar instantaneamente a interface para mostrar o nome do líder do time rival"
-    // Since the rival hasn't played yet this turn, we use their current leader index.
     setIsTeamATurn(!isTeamATurn);
+
+    // Progression of Riqueza: passes to the rival team if they steal the word
+    if (activeCard?.id === 'riqueza') {
+      const rivalInv = rivalTeam === 'A' ? inventoryA : inventoryB;
+      if (rivalInv.length < 2) {
+        addToInventory(rivalTeam, activeCard);
+      }
+      setRoundState({ activeCard: null });
+    }
 
     setRoundState({ isStealing: true, isTimerRunning: true });
   };
@@ -381,22 +495,48 @@ export default function GameScreen() {
       if (!newThemeStats[themeLabel]) newThemeStats[themeLabel] = { hits: 0, misses: 0 };
       newThemeStats[themeLabel].misses += 1;
       updateMatchStats({ themeStats: newThemeStats });
-    }
 
-    if (isStealing) {
-      // Steal finished, it's now their normal turn
+      handleLossEffects();
+      rotateLeader(isTeamATurn);
       finishRound(true);
     } else {
-      // Normal turn finished, rotate leader and pass turn
-      handleTransferCards(isTeamATurn ? 'A' : 'B');
-      rotateLeader(isTeamATurn);
       finishRound(true);
     }
   };
 
-  const finishRound = (alreadyRotated = false) => {
+  const handleBombExplosion = () => {
+    setShowBombModal(false);
+
+    // Track bomb as a special theme miss
+    const themeLabel = 'Especial';
+    const newThemeStats = { ...matchStats.themeStats };
+    if (!newThemeStats[themeLabel]) newThemeStats[themeLabel] = { hits: 0, misses: 0 };
+    newThemeStats[themeLabel].misses += 1;
+    updateMatchStats({ themeStats: newThemeStats });
+
+    // Since bomb is instant defeat, transfer volatile inventory cards
+    handleTransferCards(isTeamATurn ? 'A' : 'B');
+
+    // Rotate active team leader
+    rotateLeader(isTeamATurn);
+
+    // End round and pass turn
+    finishRound(true);
+  };
+
+  const finishRound = (alreadyRotated = false, nextScoreA = scoreA, nextScoreB = scoreB) => {
     const wasStealing = isStealing;
     const currentTurnWasA = isTeamATurn;
+    const hadDoseDupla = activeCard?.id === 'dose';
+
+    // Ensure Gêmeos card is completely removed from inventories when round ends
+    if (activeCard?.id === 'gemeos') {
+      removeFromInventory('A', 'gemeos');
+      removeFromInventory('B', 'gemeos');
+    }
+
+    // Reset Oportuno states
+    setOportunoPlayerName(null);
 
     setRoundState({ isTimerRunning: false });
     resetRoundState();
@@ -408,30 +548,32 @@ export default function GameScreen() {
     }
 
     if (wasStealing) {
-      // If it was a steal, the current team (stealer) stays as current turn
-      // to start their own normal round. No turn switch here.
       setRoundState({ roundStarted: false });
     } else {
-      // Normal turn switch
-      const nextIsTeamA = !currentTurnWasA;
-      setIsTeamATurn(nextIsTeamA);
+      if (hadDoseDupla) {
+        // EXTRA ROUND: Turn does not pass to the rival!
+        setDoseDuplaTeamName(currentTurnWasA ? 'TIME A' : 'TIME B');
+        setShowDoseDuplaModal(true);
 
-      if (nextIsTeamA) {
-        setCurrentRound(prev => prev + 1);
+        setRoundState({ roundStarted: false });
+      } else {
+        // Normal turn switch
+        const nextIsTeamA = !currentTurnWasA;
+        setIsTeamATurn(nextIsTeamA);
+
+        if (nextIsTeamA) {
+          setCurrentRound(prev => prev + 1);
+        }
+
+        setRoundState({ roundStarted: false });
       }
 
-      // Check for Volatile cards and transfer if round lost
-      // If team lost (didn't score) and had volatile cards, pass to rival
-      // In finishRound, we can check if points were awarded.
-      // But finishRound is called in both success and fail.
-      // Let's handle transfer in confirmCancel and handleTimeUpClose instead.
-
       // Victory Check
-      if (scoreA >= scoreToWin || scoreB >= scoreToWin) {
+      if (nextScoreA >= scoreToWin || nextScoreB >= scoreToWin) {
         updateMatchStats({
           totalRounds: currentRound,
-          finalScoreA: scoreA,
-          finalScoreB: scoreB
+          finalScoreA: nextScoreA,
+          finalScoreB: nextScoreB
         });
         router.replace('/victory');
       }
@@ -444,18 +586,116 @@ export default function GameScreen() {
     const toInv = toTeam === 'A' ? inventoryA : inventoryB;
 
     fromInv.forEach(card => {
-      if (card.volatile && toInv.length < 2) {
+      // Exclude 'gemeos' from automatic transfer
+      if (card.volatile && card.id !== 'gemeos' && toInv.length < 2) {
         addToInventory(toTeam, card);
         removeFromInventory(fromTeam, card.id);
-        // Alert or animation could be here
       }
     });
   };
 
-  const handleCardUse = (card: any) => {
-    setRoundState({ activeCard: card });
-    removeFromInventory(isTeamATurn ? 'A' : 'B', card.id);
+  const openSpecialCardModal = (card: any) => {
+    if (roundStarted) {
+      setWasTimerRunningBeforeModal(isTimerRunning);
+      setRoundState({ isTimerRunning: false, specialCard: card });
+    } else {
+      setRoundState({ specialCard: card });
+    }
+    setShowSpecialModal(true);
+  };
+
+  const closeSpecialCardModal = () => {
     setShowSpecialModal(false);
+    if (roundStarted) {
+      if (wasTimerRunningBeforeModal) {
+        setRoundState({ isTimerRunning: true });
+      }
+      setWasTimerRunningBeforeModal(false);
+    } else {
+      // If NOT started, and it's an Instantâneo card, we proceed to start the round!
+      if (specialCard?.usage === 'Instantâneo') {
+        setShowWordModal(true);
+      } else {
+        // If it was a Livre card just drawn on the dice, they closed it, so it's safely stored in inventory
+        // and we clear the active round's specialCard field so they can roll again.
+        setRoundState({ specialCard: null });
+      }
+    }
+  };
+
+  const handleCardUse = (card: any) => {
+    // Resume timer if it was running and we are during active round (except for Oportuno, which selects a player first)
+    if (roundStarted && card.id !== 'oportuno') {
+      if (wasTimerRunningBeforeModal) {
+        setRoundState({ isTimerRunning: true });
+      }
+      setWasTimerRunningBeforeModal(false);
+    }
+
+    // Consume from inventory
+    removeFromInventory(isTeamATurn ? 'A' : 'B', card.id);
+
+    // Set active card
+    setRoundState({ activeCard: card });
+    setShowSpecialModal(false);
+
+    // Handle specific card activations
+    if (card.id === 'coringa') {
+      if (!roundStarted) {
+        // Before rolling: show choice modal
+        setShowCoringaModal(true);
+      }
+    } else if (card.id === 'oportuno') {
+      setShowOportunoModal(true);
+    }
+  };
+
+  const handleCoringaThemeChoice = (chosenThemeLabel: string) => {
+    setShowCoringaThemeModal(false);
+    setShowCoringaModal(false);
+
+    const chosenTheme = THEMES.find(t => t.label === chosenThemeLabel);
+    if (chosenTheme) {
+      const themeWords = words[chosenTheme.label] || [];
+      const randomWord = themeWords.length > 0
+        ? themeWords[Math.floor(secureRandom() * themeWords.length)]
+        : 'Palavra não encontrada';
+
+      setRoundState({
+        theme: chosenTheme,
+        word: randomWord,
+        timerValue: defaultTimer,
+        activeCard: activeCard || specialCard, // Keep Coringa active
+      });
+      setShowWordModal(true);
+    }
+  };
+
+  const handleCoringaSwap = () => {
+    setShowCoringaModal(false);
+
+    // Filter available cards that are Livre and NOT Coringa
+    const livreCards = availableSpecialCards.filter(c => c.usage === 'Livre' && c.id !== 'coringa');
+    const fallbackLivre = availableSpecialCards.filter(c => c.usage === 'Livre');
+    const candidates = livreCards.length > 0 ? livreCards : fallbackLivre;
+
+    if (candidates.length > 0) {
+      const newCard = candidates[Math.floor(secureRandom() * candidates.length)];
+      addToInventory(isTeamATurn ? 'A' : 'B', newCard);
+      setCoringaNewCardTitle(newCard.title);
+      setShowCoringaSwapSuccess(true);
+    }
+  };
+
+  const handleOportunoPlayerSelect = (playerName: string) => {
+    setOportunoPlayerName(playerName);
+    setShowOportunoModal(false);
+
+    // Resume timer if it was running before the modal opened
+    if (wasTimerRunningBeforeModal) {
+      setRoundState({ isTimerRunning: true });
+    }
+    setWasTimerRunningBeforeModal(false);
   };
 
   const replaceCard = (oldCardId: string) => {
@@ -477,7 +717,15 @@ export default function GameScreen() {
 
   const handleExit = () => {
     setShowExitModal(false);
-    resetRoundState();
+    resetMatch();
+    // Also reset local UI and game states to ensure absolutely clean slate
+    setScoreA(0.0);
+    setScoreB(0.0);
+    setCurrentRound(1);
+    setIsTeamATurn(true);
+    setDiceResult('?');
+    setIsRolling(false);
+    setOportunoPlayerName(null);
     router.replace('/');
   };
 
@@ -517,9 +765,19 @@ export default function GameScreen() {
               </View>
             </View>
             {isTeamATurn && (
-              <View style={styles.leaderBadge}>
-                <FontAwesome5 name="user-tie" size={12} color={COLORS.primary} />
-                <Text style={styles.leaderBadgeText}>{teamA[leaderIndexA]?.name}</Text>
+              <View style={styles.leaderRowContainer}>
+                <View style={styles.leaderBadge}>
+                  <FontAwesome5 name="user-tie" size={12} color={COLORS.primary} />
+                  <Text style={styles.leaderBadgeText}>{teamA[leaderIndexA]?.name}</Text>
+                </View>
+                <Inventory
+                  team="A"
+                  cards={inventoryA}
+                  activeCard={activeCard}
+                  isCurrentTurn={!isRolling && roundStarted}
+                  onCardPress={(card) => openSpecialCardModal(card)}
+                  compact
+                />
               </View>
             )}
           </View>
@@ -537,9 +795,19 @@ export default function GameScreen() {
               </View>
             </View>
             {!isTeamATurn && (
-              <View style={styles.leaderBadge}>
-                <FontAwesome5 name="user-tie" size={12} color={COLORS.primary} />
-                <Text style={styles.leaderBadgeText}>{teamB[leaderIndexB]?.name}</Text>
+              <View style={styles.leaderRowContainer}>
+                <View style={styles.leaderBadge}>
+                  <FontAwesome5 name="user-tie" size={12} color={COLORS.primary} />
+                  <Text style={styles.leaderBadgeText}>{teamB[leaderIndexB]?.name}</Text>
+                </View>
+                <Inventory
+                  team="B"
+                  cards={inventoryB}
+                  activeCard={activeCard}
+                  isCurrentTurn={!isRolling && roundStarted}
+                  onCardPress={(card) => openSpecialCardModal(card)}
+                  compact
+                />
               </View>
             )}
           </View>
@@ -548,6 +816,14 @@ export default function GameScreen() {
 
       {/* Game Content Area */}
       <View style={styles.gameContent}>
+        {showTooltip && (
+          <View style={styles.tooltip}>
+            <MaterialCommunityIcons name="gift-outline" size={14} color="#FFF" />
+            <Text style={styles.tooltipText}>
+              Ganhaste uma Carta Especial! Pode guardá-la ou usá-la para virar o jogo.
+            </Text>
+          </View>
+        )}
         {/* Dice Section */}
         {!roundStarted && (
           <View style={styles.diceSection}>
@@ -556,7 +832,7 @@ export default function GameScreen() {
                 <View style={styles.actionGridRow}>
                   <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: COLORS.dark }]}
-                    onPress={() => setShowSpecialModal(true)}
+                    onPress={() => openSpecialCardModal(specialCard)}
                   >
                     <MaterialCommunityIcons name="cards-playing" size={24} color="#FFF" />
                     <Text style={styles.actionButtonText}>VER ESPECIAL</Text>
@@ -597,6 +873,51 @@ export default function GameScreen() {
               </View>
             )}
 
+            {activeCard && (
+              <View style={styles.badgeContainer}>
+                {activeCard.id === 'coringa' && (
+                  <View style={[styles.effectBadge, styles.coringaBadge]}>
+                    <MaterialCommunityIcons name="cards-playing-outline" size={14} color="#FFF" />
+                    <Text style={styles.effectBadgeText}>CORINGA: 30% dos pontos de vitória ao acertar!</Text>
+                  </View>
+                )}
+                {activeCard.id === 'oportuno' && (
+                  <View style={[styles.effectBadge, styles.oportunoBadge]}>
+                    <MaterialCommunityIcons name="lightbulb-on" size={14} color="#FFF" />
+                    <Text style={styles.effectBadgeText}>
+                      {oportunoPlayerName 
+                        ? `OPORTUNO: DICA EXTRA PARA ${oportunoPlayerName.toUpperCase()}!` 
+                        : 'OPORTUNO: +1 DICA EXTRA!'}
+                    </Text>
+                  </View>
+                )}
+                {activeCard.id === 'gemeos' && (
+                  <View style={[styles.effectBadge, styles.gemeosBadge]}>
+                    <FontAwesome5 name="user-friends" size={12} color="#FFF" />
+                    <Text style={styles.effectBadgeText}>GÊMEO DO MAU: Pontos Compartilhados!</Text>
+                  </View>
+                )}
+                {activeCard.id === 'fratura' && (
+                  <View style={[styles.effectBadge, styles.fraturaBadge]}>
+                    <MaterialCommunityIcons name="bone" size={14} color="#FFF" />
+                    <Text style={styles.effectBadgeText}>FRATURA: Penalidade se Errar!</Text>
+                  </View>
+                )}
+                {activeCard.id === 'riqueza' && (
+                  <View style={[styles.effectBadge, styles.riquezaBadge]}>
+                    <FontAwesome5 name="coins" size={12} color="#FFF" />
+                    <Text style={styles.effectBadgeText}>RIQUEZA: Prêmio Máximo Ativo!</Text>
+                  </View>
+                )}
+                {activeCard.id === 'dose' && (
+                  <View style={[styles.effectBadge, styles.doseBadge]}>
+                    <MaterialCommunityIcons name="cards-playing" size={14} color="#FFF" />
+                    <Text style={styles.effectBadgeText}>DOSE DUPLA: Rodada Extra Garantida!</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             <View style={styles.actionGridColumn}>
               <View style={styles.activeThemeBadge}>
                 <Text style={styles.activeThemeValue}>
@@ -621,7 +942,7 @@ export default function GameScreen() {
                 {specialCard && (
                   <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: COLORS.dark }]}
-                    onPress={() => setShowSpecialModal(true)}
+                    onPress={() => openSpecialCardModal(specialCard)}
                   >
                     <MaterialCommunityIcons name="cards-playing" size={24} color="#FFF" />
                     <Text style={styles.actionButtonText}>VER ESPECIAL</Text>
@@ -642,14 +963,15 @@ export default function GameScreen() {
                   fill="none"
                 />
                 {/* Progress Circle */}
-                <AnimatedCircle
+                <Circle
                   cx={80}
                   cy={80}
                   r={radius}
                   strokeWidth={10}
                   fill="none"
                   strokeDasharray={circumference}
-                  animatedProps={animatedProps}
+                  stroke={strokeColor}
+                  strokeDashoffset={strokeDashoffset}
                   strokeLinecap="round"
                   transform="rotate(-90 80 80)"
                 />
@@ -660,28 +982,7 @@ export default function GameScreen() {
           </View>
         )}
 
-        {/* Inventory Section */}
-        <View style={styles.inventoryWrapper}>
-          {showTooltip && (
-            <View style={styles.tooltip}>
-              <MaterialCommunityIcons name="gift-outline" size={14} color="#FFF" />
-              <Text style={styles.tooltipText}>
-                Ganhaste uma Carta Especial! Pode guardá-la ou usá-la para virar o jogo.
-              </Text>
-            </View>
-          )}
-          <Inventory
-            team={isTeamATurn ? 'A' : 'B'}
-            cards={isTeamATurn ? inventoryA : inventoryB}
-            activeCard={activeCard}
-            isCurrentTurn={!isRolling && roundStarted}
-            hasVolatileCard={(isTeamATurn ? inventoryA : inventoryB).some(c => c.volatile)}
-            onCardPress={(card) => {
-              setRoundState({ specialCard: card });
-              setShowSpecialModal(true);
-            }}
-          />
-        </View>
+
 
         {/* Footer Controls (Fixed Bottom) */}
         {!showWordModal && !!word && (
@@ -733,7 +1034,7 @@ export default function GameScreen() {
               {!isTimerRunning && timerValue === 0 && (
                 <TouchableOpacity
                   style={[styles.winButton, { backgroundColor: '#666', borderColor: '#444' }]}
-                  onPress={finishRound}
+                  onPress={() => finishRound()}
                 >
                   <Text style={styles.winButtonText}>PRÓXIMA RODADA</Text>
                 </TouchableOpacity>
@@ -787,12 +1088,9 @@ export default function GameScreen() {
 
       <SpecialCardModal
         visible={showSpecialModal}
-        onClose={() => {
-          setShowSpecialModal(false);
-          if (!roundStarted) setRoundState({ specialCard: null });
-        }}
+        onClose={closeSpecialCardModal}
         specialCard={specialCard}
-        onConfirm={(!roundStarted && specialCard?.usage !== 'Instantâneo') ? () => handleCardUse(specialCard) : undefined}
+        onConfirm={(specialCard && specialCard.usage === 'Livre') ? () => handleCardUse(specialCard) : undefined}
         confirmText="USAR NESTA RODADA"
       />
 
@@ -902,6 +1200,130 @@ Agora é a vez normal do seu time.`}
         currentLanguage={language}
         onSelect={setLanguage}
       />
+
+      {/* Coringa Choice Modal */}
+      <CustomModal
+        visible={showCoringaModal}
+        onClose={() => setShowCoringaModal(false)}
+        title="ESCOLHA O EFEITO DO CORINGA"
+        description="Como deseja usar seu Coringa antes de rolar o dado?"
+        buttonText="CANCELAR"
+        icon={<MaterialCommunityIcons name="cards-playing-outline" size={48} color={COLORS.primary} />}
+      >
+        <View style={styles.fullInvOptions}>
+          <TouchableOpacity
+            style={styles.replaceCardButton}
+            onPress={() => setShowCoringaThemeModal(true)}
+          >
+            <MaterialCommunityIcons name="format-list-bulleted" size={24} color="#FFF" />
+            <Text style={styles.replaceCardText}>Escolher Tema</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.replaceCardButton, { backgroundColor: COLORS.dark, borderColor: '#555' }]}
+            onPress={handleCoringaSwap}
+          >
+            <MaterialCommunityIcons name="swap-horizontal" size={24} color="#FFF" />
+            <Text style={styles.replaceCardText}>Trocar Carta</Text>
+          </TouchableOpacity>
+        </View>
+      </CustomModal>
+
+      {/* Coringa Theme Choice Modal */}
+      <CustomModal
+        visible={showCoringaThemeModal}
+        onClose={() => setShowCoringaThemeModal(false)}
+        title="ESCOLHA UM TEMA"
+        description="Selecione o tema para jogar a rodada imediatamente:"
+        buttonText="CANCELAR"
+        icon={<MaterialCommunityIcons name="format-list-bulleted" size={48} color={COLORS.primary} />}
+      >
+        <View style={styles.fullInvOptions}>
+          {COMMON_THEMES.map(t => (
+            <TouchableOpacity
+              key={t.id}
+              style={styles.replaceCardButton}
+              onPress={() => handleCoringaThemeChoice(t.label)}
+            >
+              <Text style={styles.replaceCardText}>{t.label.toUpperCase()}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </CustomModal>
+
+      {/* Coringa Swap Success Modal */}
+      <CustomModal
+        visible={showCoringaSwapSuccess}
+        onClose={() => setShowCoringaSwapSuccess(false)}
+        title="CARTA TROCADA COM SUCESSO!"
+        description={`Seu Coringa foi descartado e você recebeu a carta Livre: ${coringaNewCardTitle} no seu inventário!`}
+        buttonText="FECHAR"
+        icon={<MaterialCommunityIcons name="check-circle" size={48} color="#2ecc71" />}
+      />
+
+      {/* Dose Dupla Modal */}
+      <CustomModal
+        visible={showDoseDuplaModal}
+        onClose={() => setShowDoseDuplaModal(false)}
+        title="RODADA EXTRA!"
+        description={`Efeito DOSE DUPLA ativado! O ${doseDuplaTeamName} joga novamente.`}
+        buttonText="JOGAR NOVAMENTE!"
+        icon={<MaterialCommunityIcons name="cards-playing" size={48} color="#FFD700" />}
+      />
+
+      {/* Autodestruição (Bomb) Modal */}
+      <CustomModal
+        visible={showBombModal}
+        onClose={handleBombExplosion}
+        title={`BUM! AUTODESTRUIÇÃO - ${isTeamATurn ? 'TIME A' : 'TIME B'}`}
+        description={`O ${isTeamATurn ? 'Time A' : 'Time B'} sorteou a carta de Autodestruição!\n\nA rodada foi destruída e por isso vocês não jogarão nesta rodada. A vez passa diretamente para o time rival, sem a possibilidade de roubo de palavra.`}
+        buttonText="ENTENDIDO"
+        icon={<MaterialCommunityIcons name="bomb" size={48} color={COLORS.danger} />}
+      />
+
+      {/* Oportuno Player Selection Modal */}
+      <CustomModal
+        visible={showOportunoModal}
+        onClose={() => {
+          // Fallback selection if modal closed without explicitly selecting
+          const currentTeamPlayers = isTeamATurn ? teamA : teamB;
+          const currentLeaderIdx = isTeamATurn ? leaderIndexA : leaderIndexB;
+          const oportunoPlayers = currentTeamPlayers.filter((_, idx) => idx !== currentLeaderIdx);
+          const fallbackPlayer = oportunoPlayers[0] || currentTeamPlayers[0];
+          if (fallbackPlayer) {
+            handleOportunoPlayerSelect(fallbackPlayer.name);
+          } else {
+            setShowOportunoModal(false);
+            if (wasTimerRunningBeforeModal) {
+              setRoundState({ isTimerRunning: true });
+            }
+            setWasTimerRunningBeforeModal(false);
+          }
+        }}
+        title="DICA EXTRA OPORTUNO!"
+        description={`Escolha o jogador do seu time que receberá uma dica extra de ${currentLeaderName}:`}
+        buttonText="CANCELAR"
+        icon={<MaterialCommunityIcons name="lightbulb-on" size={48} color={COLORS.primary} />}
+      >
+        <View style={styles.fullInvOptions}>
+          {(() => {
+            const currentTeamPlayers = isTeamATurn ? teamA : teamB;
+            const currentLeaderIdx = isTeamATurn ? leaderIndexA : leaderIndexB;
+            const oportunoPlayers = currentTeamPlayers.filter((_, idx) => idx !== currentLeaderIdx);
+            const list = oportunoPlayers.length > 0 ? oportunoPlayers : currentTeamPlayers;
+
+            return list.map(player => (
+              <TouchableOpacity
+                key={player.id}
+                style={[styles.replaceCardButton, { backgroundColor: '#1dd1a1', borderColor: '#10ac84' }]}
+                onPress={() => handleOportunoPlayerSelect(player.name)}
+              >
+                <FontAwesome5 name="user" size={18} color="#FFF" style={{ marginRight: 8 }} />
+                <Text style={styles.replaceCardText}>{player.name.toUpperCase()}</Text>
+              </TouchableOpacity>
+            ));
+          })()}
+        </View>
+      </CustomModal>
     </SafeAreaView>
   );
 }
@@ -973,6 +1395,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  leaderRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: -8,
+  },
   leaderBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -980,7 +1409,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-    marginTop: -8,
     borderWidth: 1,
     borderColor: COLORS.primary,
     shadowColor: COLORS.primary,
@@ -1331,6 +1759,77 @@ const styles = StyleSheet.create({
   replaceCardText: {
     color: '#FFF',
     fontSize: 14,
+    fontWeight: 'bold',
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  effectBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  effectBadgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  coringaBadge: {
+    backgroundColor: '#00b894',
+    borderColor: '#00dec3',
+  },
+  oportunoBadge: {
+    backgroundColor: '#1dd1a1',
+    borderColor: '#10ac84',
+  },
+  gemeosBadge: {
+    backgroundColor: '#2d3436',
+    borderColor: '#636e72',
+  },
+  fraturaBadge: {
+    backgroundColor: '#d63031',
+    borderColor: '#ff7675',
+  },
+  riquezaBadge: {
+    backgroundColor: '#f1c40f',
+    borderColor: '#f39c12',
+  },
+  doseBadge: {
+    backgroundColor: '#0984e3',
+    borderColor: '#74b9ff',
+  },
+  diceButtonDisabled: {
+    opacity: 0.6,
+  },
+  modalExitButton: {
+    backgroundColor: '#F44336',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    width: '100%',
+    borderBottomWidth: 4,
+    borderColor: '#D32F2F',
+  },
+  modalExitText: {
+    color: '#FFF',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

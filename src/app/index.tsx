@@ -1,7 +1,7 @@
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -13,14 +13,20 @@ import Animated, {
 } from 'react-native-reanimated';
 import packageJson from '../../package.json';
 import { LanguageModal } from '../components/LanguageModal';
-import { useAppStore } from '../store/useAppStore';
 import { COLORS } from '../constants/theme';
+import { useAppStore } from '../store/useAppStore';
 
 
 
 export default function Page() {
   const router = useRouter();
-  const { language, setLanguage } = useAppStore();
+  const { language, setLanguage, resetMatch } = useAppStore();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      resetMatch();
+    }, [resetMatch])
+  );
 
   const [showLanguageModal, setShowLanguageModal] = React.useState(false);
 
@@ -85,10 +91,8 @@ export default function Page() {
           style={styles.logoContainer}
         >
           <Animated.View style={[styles.iconWrapper, animatedLogo]}>
-            <MaterialCommunityIcons name="cards-playing" size={64} color={COLORS.primary} />
-            <View style={styles.iconBadge}>
-              <FontAwesome5 name="comment-dots" size={16} color="#fff" />
-            </View>
+            {/* <MaterialCommunityIcons name="cards-playing" size={64} color={COLORS.primary} /> */}
+            <Image source={require('../../assets/images/splash-icon.png')} style={{ width: 120, height: 120 }} />
           </Animated.View>
           <Text style={styles.title}>Mexeriqueiro</Text>
           <Text style={styles.subtitle}>Party Game</Text>

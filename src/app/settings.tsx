@@ -26,7 +26,7 @@ export default function Settings() {
     if (result.success) {
       setModalData({
         title: 'Sincronizado!',
-        desc: `O banco de dados foi atualizado com sucesso. Foram carregadas ${result.count} palavras válidas.`,
+        desc: `O banco de dados foi atualizado com sucesso. Foram carregadas ${result.wordCount} palavras válidas.`,
         icon: 'checkmark-circle'
       });
     } else {

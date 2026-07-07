@@ -4,14 +4,12 @@ import React, { useMemo } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import { Footer } from '../components/Footer';
-import { useAppStore } from '../store/useAppStore';
 import { COLORS } from '../constants/theme';
-
-
+import { useAppStore } from '../store/useAppStore';
 
 export default function VictoryScreen() {
   const router = useRouter();
-  const { matchStats, specialCardsData, teamA, teamB, resetMatch } = useAppStore();
+  const { matchStats, specialCardsData, resetMatch } = useAppStore();
 
   const gameDuration = useMemo(() => {
     if (!matchStats.startTime) return '00:00';
@@ -53,7 +51,7 @@ export default function VictoryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* Victory Header */}
         <Animated.View 
           entering={FadeInDown.duration(800)}
