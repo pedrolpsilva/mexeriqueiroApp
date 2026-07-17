@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     backgroundColor: COLORS.cardBg,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0D8D0',
+    borderBottomColor: COLORS.border,
   },
   headerIcon: {
     width: 40,
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   languageBtn: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: COLORS.background,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.support,

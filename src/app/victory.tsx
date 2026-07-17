@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   leaderItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAF6F0',
+    backgroundColor: COLORS.background,
     padding: 12,
     borderRadius: 12,
   },

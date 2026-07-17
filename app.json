@@ -7,11 +7,11 @@
     "icon": "./assets/images/icon.png",
     "scheme": "mexeriqueiroapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FF8C00"
+      "backgroundColor": "#E7373A"
     },
     "ios": {
       "supportsTablet": true
@@ -19,7 +19,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#FF8C00"
+        "backgroundColor": "#E7373A"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

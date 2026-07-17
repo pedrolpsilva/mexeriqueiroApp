@@ -304,7 +304,7 @@ const PlayerTag = ({ name, index, team, onRemove, onDragStart, onDragEnd, onLayo
       ],
       zIndex: isDragging.value ? 1000 : 1,
       opacity: isDragging.value ? 0.9 : 1,
-      backgroundColor: isDragging.value ? '#FAF6F0' : '#fff',
+      backgroundColor: isDragging.value ? COLORS.background : '#fff',
     };
   });
 

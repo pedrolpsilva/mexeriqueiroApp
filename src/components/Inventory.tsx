@@ -12,9 +12,9 @@ import { COLORS } from '../constants/theme';
 import { SpecialCard, useAppStore } from '../store/useAppStore';
 
 // ─── Colors ─────────────────────────────────────────────────────────────────
-const C_LIGHT = '#eabba2'; // Laranja Light  – borda vazia
-const C_MEDIUM = '#e3884d'; // Laranja Claro  – slot ocupado
-const C_DARK = '#eb5b27'; // Laranja Padrão – slot ativo / pulse
+const C_LIGHT = '#F8B4B6'; // Red Light  – borda vazia
+const C_MEDIUM = '#EE676A'; // Red Claro  – slot ocupado
+const C_DARK = '#E7373A'; // Red Padrão – slot ativo / pulse
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface InventoryProps {
@@ -338,7 +338,7 @@ const SLOT_SIZE = 10;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFF9F5',
+    backgroundColor: '#FFF8F8',
     borderTopWidth: 1.5,
     borderTopColor: C_LIGHT,
     paddingHorizontal: 20,
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFF0E8',
+    backgroundColor: '#FFEBEB',
     borderWidth: 1,
     borderColor: C_LIGHT,
     borderRadius: 8,
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 320,
     borderWidth: 2,
-    borderColor: '#3A2015',
+    borderColor: '#2A0808',
     borderBottomWidth: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -503,13 +503,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#3A2015',
+    color: '#2A0808',
     marginTop: 6,
   },
   modalSubtitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#e3884d',
+    color: C_MEDIUM,
     letterSpacing: 1,
     marginTop: 2,
   },
@@ -543,12 +543,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: '#eabba2',
-    backgroundColor: '#FAF6F0',
+    borderColor: C_LIGHT,
+    backgroundColor: COLORS.background,
   },
   modalSlotEmptyText: {
     fontSize: 14,
-    color: '#eabba2',
+    color: C_LIGHT,
     fontWeight: '600',
   },
   modalSlotCard: {
@@ -560,8 +560,8 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   modalSlotCardSelected: {
-    borderColor: '#eb5b27',
-    backgroundColor: '#FFF9F5',
+    borderColor: C_DARK,
+    backgroundColor: '#FFF8F8',
   },
   modalSlotCardDisabled: {
     opacity: 0.6,
@@ -576,12 +576,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 6,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#FFF8F8',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalSlotIconContainerSelected: {
-    backgroundColor: '#eb5b27',
+    backgroundColor: C_DARK,
   },
   modalSlotCardInfo: {
     flex: 1,
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   modalSlotCardTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#3A2015',
+    color: '#2A0808',
   },
   modalSlotCardUsage: {
     fontSize: 10,
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#eb5b27',
+    backgroundColor: C_DARK,
     alignSelf: 'flex-start',
     borderRadius: 6,
     paddingHorizontal: 6,
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#3A2015',
+    borderColor: '#2A0808',
     backgroundColor: '#FFF',
     borderBottomWidth: 4,
     alignItems: 'center',
@@ -641,15 +641,15 @@ const styles = StyleSheet.create({
   cancelModalButtonText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#3A2015',
+    color: '#2A0808',
   },
   useModalButton: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#3A2015',
-    backgroundColor: '#eb5b27',
+    borderColor: '#2A0808',
+    backgroundColor: C_DARK,
     borderBottomWidth: 4,
     alignItems: 'center',
   },

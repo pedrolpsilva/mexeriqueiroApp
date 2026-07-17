@@ -4,20 +4,20 @@
 
 export const COLORS = {
   // Brand Colors
-  primary: '#eb5b27',      // Bright Orange
-  primaryLight: '#e3884d', // Soft Orange
-  primaryDark: '#df6445',  // Deep Orange / Border
-  primarySupport: '#eabba2', // Muted Orange
+  primary: '#E7373A',       // Vibrant Red from the home icon
+  primaryLight: '#EE676A',  // Soft Red
+  primaryDark: '#B91C1C',   // Deep Red / Border
+  primarySupport: '#F8B4B6', // Muted/Pastel Red
   
   // UI Colors
-  background: '#FAF6F0',   // Paper / Clean background
+  background: '#FFF8F8',   // Warm white with slight red tint
   cardBg: '#FFFFFF',       // Pure white for cards
-  textDark: '#3A2015',     // Deep brown for contrast
+  textDark: '#2A0808',     // Deep red-brown for contrast
   textMuted: '#666666',    // Soft gray for hints
   textUnselected: '#999999',
   
   // Decorative / Functional
-  border: '#E0D8D0',       // Standard border color
+  border: '#EDD8D8',       // Warm pinkish border
   shadow: '#000000',
   
   // Semantic Colors
@@ -32,7 +32,7 @@ export const COLORS = {
   timerRed: '#e74c3c',
 
   // Darker shades for button borders (Physical feel)
-  buttonBorderDark: '#b94b30',
+  buttonBorderDark: '#8B1414',
   buttonBorderSuccess: '#388E3C',
   buttonBorderWarning: '#E65100',
   buttonBorderDanger: '#D32F2F',
@@ -40,9 +40,9 @@ export const COLORS = {
   buttonBorderMuted: '#444444',
 
   // Aliases for easier migration
-  dark: '#df6445',
-  light: '#e3884d',
-  support: '#eabba2',
+  dark: '#B91C1C',
+  light: '#EE676A',
+  support: '#F8B4B6',
 };
 
 export const PALETTE = COLORS; 
