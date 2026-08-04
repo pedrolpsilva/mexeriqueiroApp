@@ -717,16 +717,19 @@ export default function GameScreen() {
 
   const handleExit = () => {
     setShowExitModal(false);
-    resetMatch();
-    // Also reset local UI and game states to ensure absolutely clean slate
-    setScoreA(0.0);
-    setScoreB(0.0);
-    setCurrentRound(1);
-    setIsTeamATurn(true);
-    setDiceResult('?');
-    setIsRolling(false);
-    setOportunoPlayerName(null);
-    router.replace('/');
+    
+    // Delay state resets and navigation to allow Modal to unmount cleanly on Android
+    setTimeout(() => {
+      resetMatch();
+      setScoreA(0.0);
+      setScoreB(0.0);
+      setCurrentRound(1);
+      setIsTeamATurn(true);
+      setDiceResult('?');
+      setIsRolling(false);
+      setOportunoPlayerName(null);
+      router.replace('/');
+    }, 150);
   };
 
   const currentLeaderName = isTeamATurn

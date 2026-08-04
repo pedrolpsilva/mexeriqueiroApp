@@ -32,7 +32,7 @@ export default function Settings() {
     } else {
       setModalData({
         title: 'Erro na Sincronização',
-        desc: 'Não foi possível conectar ao Google Sheets. Verifique sua conexão com a internet.',
+        desc: 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.',
         icon: 'cloud-offline'
       });
     }
