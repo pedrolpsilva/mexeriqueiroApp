@@ -14,7 +14,9 @@
       "backgroundColor": "#E7373A"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.totaltrac.mexeriqueiroApp",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +35,9 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-apple-authentication",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true

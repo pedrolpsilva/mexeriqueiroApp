@@ -1,8 +1,9 @@
-import { supabase } from './supabase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from './firebase';
 import { SpecialCard, useAppStore } from '../store/useAppStore';
 
 /**
- * Syncs the game database from Supabase.
+ * Syncs the game database from Firebase Firestore.
  * Fetches words grouped by category and special cards.
  */
 export const syncDatabase = async () => {
@@ -10,13 +11,9 @@ export const syncDatabase = async () => {
   store.setSyncStatus('syncing');
 
   try {
-    // 1. Fetch words with their category names via join
-    const { data: wordsData, error: wordsError } = await supabase
-      .from('words')
-      .select('word, categories!inner(name)')
-      .order('word');
-
-    if (wordsError) throw wordsError;
+    // 1. Fetch words from cards_normal
+    const wordsRef = collection(db, 'cards_normal');
+    const wordsSnapshot = await getDocs(wordsRef);
 
     // Group words by category name
     const wordsByCategory: Record<string, string[]> = {
@@ -27,34 +24,45 @@ export const syncDatabase = async () => {
       Lazer: [],
     };
 
-    for (const row of wordsData ?? []) {
-      const categoryName = (row.categories as any).name as string;
-      if (wordsByCategory[categoryName]) {
-        wordsByCategory[categoryName].push(row.word);
+    wordsSnapshot.forEach((doc) => {
+      const data = doc.data();
+      // Firestore doc id is the lowercase category name (e.g., 'vivo').
+      // We capitalize the first letter to match the app's state (e.g., 'Vivo')
+      const docId = doc.id;
+      const categoryName = docId.charAt(0).toUpperCase() + docId.slice(1);
+      
+      const wordsArray = data.words as string[];
+      
+      if (wordsArray && Array.isArray(wordsArray)) {
+        if (!wordsByCategory[categoryName]) {
+          wordsByCategory[categoryName] = [];
+        }
+        wordsByCategory[categoryName].push(...wordsArray);
       }
-    }
+    });
 
-    // 2. Fetch active special cards
-    const { data: cardsData, error: cardsError } = await supabase
-      .from('special_cards')
-      .select('*')
-      .eq('status', 'active');
+    // 2. Fetch active special cards from cards_special_default
+    const cardsRef = collection(db, 'cards_special_default');
+    const qCards = query(cardsRef, where('status', '==', 'active'));
+    const cardsSnapshot = await getDocs(qCards);
 
-    if (cardsError) throw cardsError;
-
-    const specialCards: SpecialCard[] = (cardsData ?? []).map((c) => ({
-      id: c.id,
-      title: c.title,
-      desc: c.description,
-      status: c.status,
-      points: c.points,
-      progression: c.progression ?? '',
-      usage: c.usage as 'Livre' | 'Instantâneo',
-      rarity: c.rarity,
-      icon: c.icon,
-      type: c.icon_type,
-      volatile: c.volatile,
-    }));
+    const specialCards: SpecialCard[] = [];
+    cardsSnapshot.forEach((doc) => {
+      const c = doc.data();
+      specialCards.push({
+        id: doc.id,
+        title: c.title,
+        desc: c.description,
+        status: c.status,
+        points: c.points,
+        progression: c.progression ?? '',
+        usage: c.usage as 'Livre' | 'Instantâneo',
+        rarity: c.rarity,
+        icon: c.icon,
+        type: c.icon_type,
+        volatile: c.volatile,
+      });
+    });
 
     // 3. Save to Zustand store (persisted via AsyncStorage)
     store.setWords(wordsByCategory);
@@ -66,7 +74,7 @@ export const syncDatabase = async () => {
       specialCount: specialCards.length,
     };
   } catch (error) {
-    console.error('Erro na sincronização:', error);
+    console.error('Erro na sincronização com Firebase:', error);
     store.setSyncStatus('error');
     return { success: false, error };
   }
