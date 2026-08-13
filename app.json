@@ -15,7 +15,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.totaltrac.mexeriqueiroApp",
+      "bundleIdentifier": "com.mexeriqueiro",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "usesAppleSignIn": true
     },
     "android": {
@@ -25,7 +26,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.totaltrac.mexeriqueiroApp"
+      "package": "com.mexeriqueiro",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",

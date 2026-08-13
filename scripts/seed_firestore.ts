@@ -3,14 +3,32 @@ import { getFirestore, collection, addDoc, doc, setDoc } from 'firebase/firestor
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Helper to load .env if not loaded
+const envPath = path.join(__dirname, '..', '.env');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  envContent.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx !== -1) {
+        const key = trimmed.substring(0, eqIdx).trim();
+        const val = trimmed.substring(eqIdx + 1).trim();
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    }
+  });
+}
+
 const firebaseConfig = {
-  apiKey: "AIzaSyB417qlsWb80bwYZmXkVci5Qv6Drt58XiE",
-  authDomain: "mexeriqueiro-d1ac1.firebaseapp.com",
-  projectId: "mexeriqueiro-d1ac1",
-  storageBucket: "mexeriqueiro-d1ac1.firebasestorage.app",
-  messagingSenderId: "1012535452207",
-  appId: "1:1012535452207:web:082fa4581e96bfd09bdcda",
-  measurementId: "G-Z31ZBVCPZ9"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);

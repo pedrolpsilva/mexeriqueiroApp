@@ -15,6 +15,7 @@ export const configureGoogleSignIn = () => {
   GoogleSignin.configure({
     // webClientId deve ser configurado no Google Cloud / Firebase Console (OAuth Web Client ID)
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '',
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
   });
 };
 

@@ -3,6 +3,10 @@
   "main": "expo-router/entry",
   "version": "1.0.1",
   "scripts": {
+    "generate-configs": "node scripts/generate_firebase_configs.js",
+    "prestart": "npm run generate-configs",
+    "preandroid": "npm run generate-configs",
+    "preios": "npm run generate-configs",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
